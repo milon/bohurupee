@@ -29,6 +29,8 @@ type codeGrant struct {
 	PersonaID   string
 	Challenge   string
 	Method      string
+	Scope       string
+	Nonce       string
 	ExpiresAt   time.Time
 	Used        bool
 }
@@ -65,6 +67,8 @@ type IssueCodeParams struct {
 	PersonaID   string
 	Challenge   string
 	Method      string
+	Scope       string
+	Nonce       string
 }
 
 func (s *Store) IssueCode(p IssueCodeParams) (string, error) {
@@ -81,38 +85,50 @@ func (s *Store) IssueCode(p IssueCodeParams) (string, error) {
 		PersonaID:   p.PersonaID,
 		Challenge:   p.Challenge,
 		Method:      p.Method,
+		Scope:       p.Scope,
+		Nonce:       p.Nonce,
 		ExpiresAt:   s.clock.Now().Add(s.codeTTL),
 	}
 	return code, nil
 }
 
-func (s *Store) ExchangeCode(provider, clientID, redirectURI, code, verifier string) (access string, expiresIn int, personaID string, err error) {
+type ExchangeResult struct {
+	Access    string
+	ExpiresIn int
+	PersonaID string
+	ClientID  string
+	Provider  string
+	Scope     string
+	Nonce     string
+}
+
+func (s *Store) ExchangeCode(provider, clientID, redirectURI, code, verifier string) (ExchangeResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	grant, ok := s.codes[code]
 	if !ok {
-		return "", 0, "", fmt.Errorf("unknown code")
+		return ExchangeResult{}, fmt.Errorf("unknown code")
 	}
 	now := s.clock.Now()
 	if grant.Used {
-		return "", 0, "", fmt.Errorf("code already used")
+		return ExchangeResult{}, fmt.Errorf("code already used")
 	}
 	if !now.Before(grant.ExpiresAt) {
 		delete(s.codes, code)
-		return "", 0, "", fmt.Errorf("code expired")
+		return ExchangeResult{}, fmt.Errorf("code expired")
 	}
 	if grant.Provider != provider {
-		return "", 0, "", fmt.Errorf("code issued for a different provider")
+		return ExchangeResult{}, fmt.Errorf("code issued for a different provider")
 	}
 	if grant.ClientID != clientID {
-		return "", 0, "", fmt.Errorf("client_id mismatch")
+		return ExchangeResult{}, fmt.Errorf("client_id mismatch")
 	}
 	if grant.RedirectURI != redirectURI {
-		return "", 0, "", fmt.Errorf("redirect_uri mismatch")
+		return ExchangeResult{}, fmt.Errorf("redirect_uri mismatch")
 	}
 	if err := VerifyPKCE(grant.Method, grant.Challenge, verifier); err != nil {
-		return "", 0, "", err
+		return ExchangeResult{}, err
 	}
 
 	grant.Used = true
@@ -120,7 +136,7 @@ func (s *Store) ExchangeCode(provider, clientID, redirectURI, code, verifier str
 
 	token, err := randomToken()
 	if err != nil {
-		return "", 0, "", err
+		return ExchangeResult{}, err
 	}
 	ttl := s.tokenTTL
 	s.tokens[token] = &accessToken{
@@ -128,7 +144,15 @@ func (s *Store) ExchangeCode(provider, clientID, redirectURI, code, verifier str
 		PersonaID: grant.PersonaID,
 		ExpiresAt: now.Add(ttl),
 	}
-	return token, int(ttl / time.Second), grant.PersonaID, nil
+	return ExchangeResult{
+		Access:    token,
+		ExpiresIn: int(ttl / time.Second),
+		PersonaID: grant.PersonaID,
+		ClientID:  grant.ClientID,
+		Provider:  grant.Provider,
+		Scope:     grant.Scope,
+		Nonce:     grant.Nonce,
+	}, nil
 }
 
 func (s *Store) LookupToken(provider, token string) (personaID string, err error) {

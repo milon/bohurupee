@@ -10,6 +10,7 @@ import (
 
 	"github.com/milon/bohurupee/internal/config"
 	"github.com/milon/bohurupee/internal/listen"
+	"github.com/milon/bohurupee/internal/oidc"
 	"github.com/milon/bohurupee/internal/server"
 )
 
@@ -63,11 +64,18 @@ func run(args []string) error {
 		log.Printf("WARNING: --dangerously-bind-all-interfaces is set; binding %s (DEV ONLY)", addr.String())
 	}
 
+	signer, err := oidc.LoadOrCreate(oidc.DefaultKeyPath())
+	if err != nil {
+		return err
+	}
+
 	srv, err := server.NewWithOptions(server.Options{
 		Addr:        addr,
 		AutoApprove: envTruthy("BOHURUPEE_AUTO_APPROVE"),
 		Personas:    cfg.Personas,
 		PKCE:        cfg.PKCE,
+		Signer:      signer,
+		IDToken:     cfg.IDToken,
 	})
 	if err != nil {
 		return err

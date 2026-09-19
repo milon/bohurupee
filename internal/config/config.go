@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/milon/bohurupee/internal/oauth"
+	"github.com/milon/bohurupee/internal/oidc"
 	"gopkg.in/yaml.v3"
 )
 
@@ -15,6 +16,7 @@ type File struct {
 	Port       int           `yaml:"port"`
 	Bind       string        `yaml:"bind"`
 	PKCE       string        `yaml:"pkce"`
+	IDToken    string        `yaml:"idToken"`
 	OpenClient *bool         `yaml:"openClient"`
 	Personas   []filePersona `yaml:"personas"`
 }
@@ -32,6 +34,7 @@ type Config struct {
 	Port       int
 	Bind       string
 	PKCE       oauth.PKCEMode
+	IDToken    oidc.IDTokenMode
 	OpenClient bool
 	Personas   []oauth.Persona
 }
@@ -41,6 +44,7 @@ func Defaults() Config {
 		Port:       4190,
 		Bind:       "127.0.0.1",
 		PKCE:       oauth.PKCEOptional,
+		IDToken:    oidc.IDTokenOpenID,
 		OpenClient: true,
 		Personas:   []oauth.Persona{oauth.Alice},
 	}
@@ -86,6 +90,13 @@ func overlayYAML(cfg *Config, raw []byte) error {
 			return err
 		}
 		cfg.PKCE = mode
+	}
+	if strings.TrimSpace(f.IDToken) != "" {
+		mode, err := oidc.ParseIDTokenMode(f.IDToken)
+		if err != nil {
+			return err
+		}
+		cfg.IDToken = mode
 	}
 	if f.OpenClient != nil {
 		cfg.OpenClient = *f.OpenClient

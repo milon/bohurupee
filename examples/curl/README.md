@@ -85,3 +85,14 @@ curl -s 'http://127.0.0.1:4190/google/userinfo' \
 ```
 
 Repeat with `/acme/...` to get `"id": "acme:alice"`.
+
+## OIDC discovery
+
+```bash
+curl -s 'http://127.0.0.1:4190/google/.well-known/openid-configuration'
+curl -s 'http://127.0.0.1:4190/google/jwks'
+```
+
+Add `scope=openid` (and optionally `nonce=…`) on authorize. The token response
+then includes an RS256 `id_token` that verifies against JWKS.
+

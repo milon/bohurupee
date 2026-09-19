@@ -20,4 +20,5 @@ coverage.out
 
 # Config with secrets (none expected, but ignore local overrides)
 /bohurupee.yaml
+/bohurupee-oidc.key
 !/bohurupee.example.yaml

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/milon/bohurupee/internal/oauth"
+	"github.com/milon/bohurupee/internal/oidc"
 	"github.com/milon/bohurupee/internal/ui"
 )
 
@@ -23,6 +24,8 @@ type authRequest struct {
 	CodeChallenge       string
 	CodeChallengeMethod string
 	Auto                string
+	Scope               string
+	Nonce               string
 }
 
 func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
@@ -54,6 +57,8 @@ func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 		PersonaID:   persona.ID,
 		Challenge:   req.CodeChallenge,
 		Method:      req.CodeChallengeMethod,
+		Scope:       req.Scope,
+		Nonce:       req.Nonce,
 	})
 	if err != nil {
 		http.Error(w, "could not issue code", http.StatusInternalServerError)
@@ -109,6 +114,8 @@ func parseAuthRequest(r *http.Request, pkce oauth.PKCEMode) (authRequest, error)
 		CodeChallenge:       q.Get("code_challenge"),
 		CodeChallengeMethod: q.Get("code_challenge_method"),
 		Auto:                strings.TrimSpace(q.Get("auto")),
+		Scope:               strings.TrimSpace(q.Get("scope")),
+		Nonce:               q.Get("nonce"),
 	}
 	if req.ClientID == "" {
 		return authRequest{}, fmt.Errorf("missing client_id")
@@ -216,24 +223,50 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	access, expiresIn, _, err := s.store.ExchangeCode(provider, clientID, redirectURI, code, verifier)
+	ex, err := s.store.ExchangeCode(provider, clientID, redirectURI, code, verifier)
 	if err != nil {
 		writeTokenError(w, http.StatusBadRequest, "invalid_grant", err.Error())
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Pragma", "no-cache")
-	_ = json.NewEncoder(w).Encode(struct {
+	resp := struct {
 		AccessToken string `json:"access_token"`
 		TokenType   string `json:"token_type"`
 		ExpiresIn   int    `json:"expires_in"`
+		IDToken     string `json:"id_token,omitempty"`
+		Scope       string `json:"scope,omitempty"`
 	}{
-		AccessToken: access,
+		AccessToken: ex.Access,
 		TokenType:   "Bearer",
-		ExpiresIn:   expiresIn,
-	})
+		ExpiresIn:   ex.ExpiresIn,
+		Scope:       ex.Scope,
+	}
+	if oidc.WantIDToken(s.idToken, ex.Scope) {
+		persona, ok := s.catalog.Lookup(ex.PersonaID)
+		if !ok {
+			writeTokenError(w, http.StatusInternalServerError, "server_error", "unknown persona")
+			return
+		}
+		idt, err := s.signer.IDToken(oidc.IDTokenInput{
+			Issuer:   s.issuer(provider),
+			Audience: ex.ClientID,
+			Nonce:    ex.Nonce,
+			Now:      s.now(),
+			TTL:      s.tokenTTL,
+			Provider: provider,
+			Persona:  persona,
+		})
+		if err != nil {
+			writeTokenError(w, http.StatusInternalServerError, "server_error", "could not issue id_token")
+			return
+		}
+		resp.IDToken = idt
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 func (s *Server) handleUserinfo(w http.ResponseWriter, r *http.Request) {

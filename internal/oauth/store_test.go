@@ -16,15 +16,15 @@ func TestStoreReuseAndExpiry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, persona, err := s.ExchangeCode("google", "dev", "http://127.0.0.1:9/cb", code, "")
+	got, err := s.ExchangeCode("google", "dev", "http://127.0.0.1:9/cb", code, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if persona != "alice" {
-		t.Fatalf("persona = %q", persona)
+	if got.PersonaID != "alice" {
+		t.Fatalf("persona = %q", got.PersonaID)
 	}
 
-	_, _, _, err = s.ExchangeCode("google", "dev", "http://127.0.0.1:9/cb", code, "")
+	_, err = s.ExchangeCode("google", "dev", "http://127.0.0.1:9/cb", code, "")
 	if err == nil {
 		t.Fatal("expected reused code to fail")
 	}
@@ -34,7 +34,7 @@ func TestStoreReuseAndExpiry(t *testing.T) {
 		t.Fatal(err)
 	}
 	clock.Advance(time.Minute)
-	_, _, _, err = s.ExchangeCode("google", "dev", "http://127.0.0.1:9/cb", code2, "")
+	_, err = s.ExchangeCode("google", "dev", "http://127.0.0.1:9/cb", code2, "")
 	if err == nil {
 		t.Fatal("expected expired code to fail")
 	}
@@ -48,7 +48,7 @@ func TestStoreProviderIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := s.ExchangeCode("acme", "dev", "http://127.0.0.1:9/cb", code, ""); err == nil {
+	if _, err := s.ExchangeCode("acme", "dev", "http://127.0.0.1:9/cb", code, ""); err == nil {
 		t.Fatal("expected provider mismatch")
 	}
 }

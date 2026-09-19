@@ -1,6 +1,7 @@
 port: 4190
 bind: 127.0.0.1
 pkce: optional
+idToken: openid
 openClient: true
 
 personas:
