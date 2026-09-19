@@ -24,8 +24,13 @@ type Templates struct {
 }
 
 type HomeData struct {
-	Listen string
-	URL    string
+	Listen       string
+	URL          string
+	Version      string
+	Personas     []oauth.Persona
+	AuthorizeURL string
+	Curl         string
+	DiscoveryURL string
 }
 
 type ConsentData struct {

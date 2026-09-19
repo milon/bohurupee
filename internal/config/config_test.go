@@ -40,6 +40,9 @@ func TestLoadExampleYAML(t *testing.T) {
 	if !ok || gh.Template != "github" {
 		t.Fatalf("github profile = %+v ok=%v", gh, ok)
 	}
+	if !cfg.BindFromFile || cfg.Bind != "127.0.0.1" {
+		t.Fatalf("bind from file = %q set=%v", cfg.Bind, cfg.BindFromFile)
+	}
 }
 
 func TestOverlayKeepsDefaultPersonas(t *testing.T) {
@@ -53,6 +56,9 @@ func TestOverlayKeepsDefaultPersonas(t *testing.T) {
 	}
 	if len(cfg.Personas) != 1 || cfg.Personas[0].ID != "alice" {
 		t.Fatalf("personas = %+v", cfg.Personas)
+	}
+	if cfg.BindFromFile {
+		t.Fatal("bind was not in the file")
 	}
 }
 

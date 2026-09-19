@@ -1,4 +1,4 @@
-# Stub for later release. Do not publish from this file yet.
+# Publishes darwin/linux/windows binaries and a multi-arch scratch image.
 version: 2
 
 project_name: bohurupee
@@ -10,7 +10,10 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
+      - -s
+      - -w
       - -B=gobuildid
+      - -X github.com/milon/bohurupee/internal/version.Version={{ .Version }}
     goos:
       - darwin
       - linux
@@ -24,12 +27,47 @@ builds:
 
 archives:
   - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
         formats: [zip]
+    files:
+      - src: LICENSE
+      - src: README.md
+      - src: bohurupee.example.yaml
 
 checksum:
   name_template: checksums.txt
 
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
 changelog:
   sort: asc
+
+dockers_v2:
+  - ids:
+      - bohurupee
+    dockerfile: Dockerfile
+    images:
+      - ghcr.io/milon/bohurupee
+    tags:
+      - "{{ .Tag }}"
+      - "v{{ .Major }}.{{ .Minor }}"
+      - latest
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    sbom: false
+    labels:
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.description: "Local fake identity provider for OAuth and OIDC development. DEV ONLY."
+      org.opencontainers.image.source: "https://github.com/milon/bohurupee"
+      org.opencontainers.image.licenses: MIT
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+
+release:
+  github:
+    owner: milon
+    name: bohurupee

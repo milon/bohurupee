@@ -8,10 +8,9 @@ For curl, auto-approve with `?auto=alice` (or `?auto=bob`) or
 Any provider slug works (`google`, `acme`, …). The `id` / `sub` prefix follows
 the path.
 
-Start the server:
+Start the server (release binary, or `go build -o ./bohurupee ./cmd/bohurupee`):
 
 ```bash
-go build -o ./bohurupee ./cmd/bohurupee
 ./bohurupee --config ./bohurupee.example.yaml
 ```
 

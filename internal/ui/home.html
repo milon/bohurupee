@@ -14,6 +14,7 @@
       <p class="stamp">DEV ONLY</p>
       <h1>Bohurupee</h1>
       <p class="bn">বহুরূপী</p>
+      <p class="ver">{{.Version}}</p>
       <p class="lede">Local fake identity provider. Do not expose this process beyond your machine.</p>
     </header>
 
@@ -25,6 +26,19 @@
       </section>
 
       <section class="card">
+        <h2>Personas</h2>
+        <ul class="people">
+          {{range .Personas}}
+          <li>
+            <strong>{{.Name}}</strong>
+            <span class="meta">{{.ID}}{{if .Email}} · {{.Email}}{{end}}</span>
+          </li>
+          {{end}}
+        </ul>
+        <p class="hint">Append <code>?auto={{(index .Personas 0).ID}}</code> to skip the consent page.</p>
+      </section>
+
+      <section class="card">
         <h2>OAuth / OIDC</h2>
         <ul class="routes">
           <li class="route"><span class="method">GET</span><code>/{provider}/authorize</code></li>
@@ -33,9 +47,69 @@
           <li class="route"><span class="method">GET</span><code>/{provider}/.well-known/openid-configuration</code></li>
           <li class="route"><span class="method">GET</span><code>/{provider}/jwks</code></li>
         </ul>
-        <p class="hint">Replace <code>{provider}</code> with any slug, such as <code>google</code> or <code>github</code>.</p>
+        <p class="hint">Replace <code>{provider}</code> with any slug, such as <code>google</code> or <code>github</code>. <a href="{{.DiscoveryURL}}">Open Google discovery</a>.</p>
+      </section>
+
+      <section class="card">
+        <h2>Copy</h2>
+        <div class="snippet-block">
+          <div class="copy-row">
+            <h3>Open consent</h3>
+            <button type="button" class="copy" data-copy="snippet-authorize">Copy</button>
+          </div>
+          <pre id="snippet-authorize" class="snippet"><code>{{.AuthorizeURL}}</code></pre>
+          <p class="hint">Opens the persona picker. <code>state</code> is echoed back on the redirect.</p>
+        </div>
+        <div class="snippet-block">
+          <div class="copy-row">
+            <h3>Auto-approve with curl</h3>
+            <button type="button" class="copy" data-copy="snippet-curl">Copy</button>
+          </div>
+          <pre id="snippet-curl" class="snippet"><code>{{.Curl}}</code></pre>
+          <p class="hint">Read <code>code</code> from the <code>Location</code> header. The callback host does not need to be running.</p>
+        </div>
       </section>
     </div>
   </main>
+  <script>
+    function copyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).catch(function () {
+          return fallbackCopy(text);
+        });
+      }
+      return fallbackCopy(text);
+    }
+    function fallbackCopy(text) {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.top = "0";
+      ta.style.left = "0";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (err) { ok = false; }
+      document.body.removeChild(ta);
+      return ok ? Promise.resolve() : Promise.reject();
+    }
+    document.querySelectorAll("[data-copy]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var el = document.getElementById(btn.getAttribute("data-copy"));
+        if (!el) return;
+        var prev = btn.textContent;
+        copyText(el.textContent.trim()).then(function () {
+          btn.textContent = "Copied";
+          setTimeout(function () { btn.textContent = prev; }, 1200);
+        }, function () {
+          btn.textContent = "Select text";
+          setTimeout(function () { btn.textContent = prev; }, 1200);
+        });
+      });
+    });
+  </script>
 </body>
 </html>

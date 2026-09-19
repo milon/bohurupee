@@ -24,6 +24,13 @@ jobs:
       - name: Build
         run: go build -o /tmp/bohurupee ./cmd/bohurupee
 
+      - name: Check GoReleaser config
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: check
+
       - name: Run curl and OIDC examples
         shell: bash
         run: |

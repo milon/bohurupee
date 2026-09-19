@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/milon/bohurupee/assets"
@@ -10,6 +11,7 @@ import (
 	"github.com/milon/bohurupee/internal/oidc"
 	"github.com/milon/bohurupee/internal/profiles"
 	"github.com/milon/bohurupee/internal/ui"
+	"github.com/milon/bohurupee/internal/version"
 )
 
 type Options struct {
@@ -116,13 +118,32 @@ func (s *Server) Handler() http.Handler {
 func (s *Server) handleHome(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
+	base := s.Addr.DisplayURL()
+	authorize, curlCmd := homeSnippets(base)
 	data := ui.HomeData{
-		Listen: s.Addr.String(),
-		URL:    s.Addr.DisplayURL(),
+		Listen:       s.Addr.String(),
+		URL:          base,
+		Version:      version.String(),
+		Personas:     s.catalog.All(),
+		AuthorizeURL: authorize,
+		Curl:         curlCmd,
+		DiscoveryURL: base + "/google/.well-known/openid-configuration",
 	}
 	if err := s.ui.WriteHome(w, data); err != nil {
 		http.Error(w, "template error", http.StatusInternalServerError)
 	}
+}
+
+func homeSnippets(base string) (authorize, curlCmd string) {
+	q := url.Values{}
+	q.Set("client_id", "dev-client")
+	q.Set("redirect_uri", "http://127.0.0.1:9999/callback")
+	q.Set("response_type", "code")
+	q.Set("state", "xyz")
+	authorize = base + "/google/authorize?" + q.Encode()
+	q.Set("auto", "alice")
+	curlCmd = "curl -sI '" + base + "/google/authorize?" + q.Encode() + "'"
+	return authorize, curlCmd
 }
 
 func (s *Server) handleFavicon(w http.ResponseWriter, _ *http.Request) {

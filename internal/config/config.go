@@ -45,13 +45,14 @@ type filePersona struct {
 }
 
 type Config struct {
-	Port       int
-	Bind       string
-	PKCE       oauth.PKCEMode
-	IDToken    oidc.IDTokenMode
-	OpenClient bool
-	Personas   []oauth.Persona
-	Profiles   map[string]profiles.Profile
+	Port         int
+	Bind         string
+	BindFromFile bool
+	PKCE         oauth.PKCEMode
+	IDToken      oidc.IDTokenMode
+	OpenClient   bool
+	Personas     []oauth.Persona
+	Profiles     map[string]profiles.Profile
 }
 
 func Defaults() Config {
@@ -98,6 +99,7 @@ func overlayYAML(cfg *Config, raw []byte) error {
 	}
 	if strings.TrimSpace(f.Bind) != "" {
 		cfg.Bind = strings.TrimSpace(f.Bind)
+		cfg.BindFromFile = true
 	}
 	if strings.TrimSpace(f.PKCE) != "" {
 		mode, err := oauth.ParsePKCEMode(f.PKCE)

@@ -30,7 +30,7 @@ code {
 }
 
 .sheet {
-  width: min(40rem, calc(100% - 2.5rem));
+  width: min(44rem, calc(100% - 2.5rem));
   margin: 0 auto;
   padding: 3.25rem 0 4rem;
 }
@@ -67,8 +67,15 @@ h1 {
   font-size: 1.05rem;
 }
 
+.ver {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+}
+
 .lede {
-  max-width: 34rem;
+  max-width: 36rem;
   margin: 0.85rem 0 0;
   color: var(--muted);
 }
@@ -126,6 +133,64 @@ h1 {
 }
 
 .hint { margin: 0.7rem 0 0; color: var(--muted); font-size: 0.9rem; }
+
+.people { margin: 0.35rem 0 0; padding: 0; list-style: none; }
+
+.people li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.7rem;
+  align-items: baseline;
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.people li:first-child { border-top: 0; }
+
+.people strong { font-weight: 650; }
+
+.snippet-block { margin-top: 0.85rem; }
+.snippet-block:first-of-type { margin-top: 0.35rem; }
+
+.copy-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.copy-row h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+button.copy {
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 999px;
+  padding: 0.15rem 0.7rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--amber-ink);
+  cursor: pointer;
+}
+
+button.copy:hover { border-color: #d6a06a; }
+
+.snippet {
+  margin: 0.45rem 0 0;
+  padding: 0.7rem 0.8rem;
+  background: var(--paper);
+  border-radius: 0.55rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
 
 .mark-sm svg { width: 2.75rem; }
 
