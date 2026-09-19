@@ -67,6 +67,28 @@ dockers_v2:
       org.opencontainers.image.version: "{{ .Version }}"
       org.opencontainers.image.revision: "{{ .FullCommit }}"
 
+# Published to github.com/milon/homebrew-bohurupee when HOMEBREW_TAP_TOKEN
+# can push to that repository. Without the token the cask is still rendered
+# under dist/ and the release continues.
+homebrew_casks:
+  - name: bohurupee
+    ids:
+      - bohurupee
+    repository:
+      owner: milon
+      name: homebrew-bohurupee
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    skip_upload: "{{ if .Env.HOMEBREW_TAP_TOKEN }}false{{ else }}true{{ end }}"
+    homepage: "https://github.com/milon/bohurupee"
+    description: "Local fake identity provider for OAuth and OIDC development. DEV ONLY."
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/bohurupee"]
+          end
+    caveats: "Bohurupee is a local fake identity provider. DEV ONLY. It listens on 127.0.0.1:4190."
+
 release:
   github:
     owner: milon

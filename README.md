@@ -15,8 +15,19 @@ not need it, or Go, to use the server.
 
 ## Install
 
-Download a release binary, run the container, or build from source. The server
-is one file. It does not need Node, PHP, or a database.
+Download a release binary, install with Homebrew, run the container, or build
+from source. The server is one file. It does not need Node, PHP, or a database.
+
+### Homebrew
+
+```bash
+brew install --cask milon/bohurupee/bohurupee
+bohurupee init
+bohurupee
+```
+
+That taps [milon/homebrew-bohurupee](https://github.com/milon/homebrew-bohurupee).
+macOS and Linux are both in the cask.
 
 ### Release binary
 

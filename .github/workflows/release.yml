@@ -85,3 +85,6 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Personal token that can push to milon/homebrew-bohurupee.
+          # Empty skips the tap upload; the GitHub Release still publishes.
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
