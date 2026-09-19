@@ -7,16 +7,25 @@ import (
 	"html/template"
 	"io"
 	"net/url"
+	"strings"
+	"unicode"
 
+	"github.com/milon/bohurupee/assets"
 	"github.com/milon/bohurupee/internal/oauth"
 )
 
-//go:embed *.html
+//go:embed *.html style.css
 var files embed.FS
 
 type Templates struct {
+	home     *template.Template
 	consent  *template.Template
 	formPost *template.Template
+}
+
+type HomeData struct {
+	Listen string
+	URL    string
 }
 
 type ConsentData struct {
@@ -33,8 +42,23 @@ type FormPostData struct {
 }
 
 func Load() (*Templates, error) {
+	css, err := files.ReadFile("style.css")
+	if err != nil {
+		return nil, fmt.Errorf("read style: %w", err)
+	}
 	funcMap := template.FuncMap{
 		"continueURL": continueURL,
+		"logo": func() template.HTML {
+			return template.HTML(assets.Logo)
+		},
+		"css": func() template.CSS {
+			return template.CSS(css)
+		},
+		"providerLabel": providerLabel,
+	}
+	home, err := template.New("home.html").Funcs(funcMap).ParseFS(files, "home.html")
+	if err != nil {
+		return nil, fmt.Errorf("parse home: %w", err)
 	}
 	consent, err := template.New("consent.html").Funcs(funcMap).ParseFS(files, "consent.html")
 	if err != nil {
@@ -44,7 +68,11 @@ func Load() (*Templates, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse formpost: %w", err)
 	}
-	return &Templates{consent: consent, formPost: formPost}, nil
+	return &Templates{home: home, consent: consent, formPost: formPost}, nil
+}
+
+func (t *Templates) WriteHome(w io.Writer, data HomeData) error {
+	return t.home.Execute(w, data)
 }
 
 func (t *Templates) WriteConsent(w io.Writer, data ConsentData) error {
@@ -57,6 +85,41 @@ func (t *Templates) RenderFormPost(data FormPostData) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+func providerLabel(slug string) string {
+	slug = strings.ToLower(strings.TrimSpace(slug))
+	if name, ok := knownProviders[slug]; ok {
+		return name
+	}
+	parts := strings.FieldsFunc(slug, func(r rune) bool {
+		return r == '-' || r == '_'
+	})
+	for i, part := range parts {
+		runes := []rune(part)
+		if len(runes) == 0 {
+			continue
+		}
+		runes[0] = unicode.ToUpper(runes[0])
+		parts[i] = string(runes)
+	}
+	return strings.Join(parts, " ")
+}
+
+var knownProviders = map[string]string{
+	"google":    "Google",
+	"github":    "GitHub",
+	"gitlab":    "GitLab",
+	"apple":     "Apple",
+	"facebook":  "Facebook",
+	"microsoft": "Microsoft",
+	"linkedin":  "LinkedIn",
+	"twitter":   "Twitter",
+	"slack":     "Slack",
+	"discord":   "Discord",
+	"bitbucket": "Bitbucket",
+	"okta":      "Okta",
+	"auth0":     "Auth0",
 }
 
 func continueURL(q url.Values, personaID string) string {

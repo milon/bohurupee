@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bohurupee — DEV ONLY</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <style>{{css}}</style>
+</head>
+<body>
+  <main class="sheet">
+    <header>
+      <div class="mark">{{logo}}</div>
+      <p class="stamp">DEV ONLY</p>
+      <h1>Bohurupee</h1>
+      <p class="bn">বহুরূপী</p>
+      <p class="lede">Local fake identity provider. Do not expose this process beyond your machine.</p>
+    </header>
+
+    <div class="cards">
+      <section class="card">
+        <h2>Listening</h2>
+        <p class="listen"><code>{{.Listen}}</code></p>
+        <p class="listen"><a href="{{.URL}}">{{.URL}}</a></p>
+      </section>
+
+      <section class="card">
+        <h2>OAuth / OIDC</h2>
+        <ul class="routes">
+          <li class="route"><span class="method">GET</span><code>/{provider}/authorize</code></li>
+          <li class="route"><span class="method">POST</span><code>/{provider}/token</code></li>
+          <li class="route"><span class="method">GET</span><code>/{provider}/userinfo</code></li>
+          <li class="route"><span class="method">GET</span><code>/{provider}/.well-known/openid-configuration</code></li>
+          <li class="route"><span class="method">GET</span><code>/{provider}/jwks</code></li>
+        </ul>
+        <p class="hint">Replace <code>{provider}</code> with any slug, such as <code>google</code> or <code>github</code>.</p>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

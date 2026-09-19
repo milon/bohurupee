@@ -29,7 +29,7 @@ func TestAuthorizeShowsConsent(t *testing.T) {
 		t.Fatalf("status = %d, want 200 body = %s", rec.Code, rec.Body.String())
 	}
 	body := rec.Body.String()
-	for _, needle := range []string{"DEV ONLY", "Alice Admin", "auto=alice"} {
+	for _, needle := range []string{"DEV ONLY", "Alice Admin", "auto=alice", "<title>Google — Bohurupee</title>", "Sign in with"} {
 		if !strings.Contains(body, needle) {
 			t.Fatalf("consent missing %q\n%s", needle, body)
 		}

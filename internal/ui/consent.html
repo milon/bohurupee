@@ -3,29 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Bohurupee — pick a persona</title>
-  <style>
-    body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 2.5rem auto; max-width: 40rem; line-height: 1.5; color: #111; }
-    .banner { background: #b45309; color: #fff; font-weight: 700; letter-spacing: 0.04em; padding: 0.4rem 0.75rem; display: inline-block; }
-    .personas { display: grid; gap: 0.75rem; margin-top: 1.25rem; }
-    a.persona { display: block; text-decoration: none; color: inherit; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.85rem 1rem; }
-    a.persona:hover { border-color: #b45309; }
-    a.persona.last { outline: 2px solid #b45309; }
-    .meta { color: #4b5563; font-size: 0.9rem; }
-    code { background: #f3f4f6; padding: 0.1rem 0.35rem; }
-  </style>
+  <title>{{providerLabel .Provider}} — Bohurupee</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <style>{{css}}</style>
 </head>
 <body>
-  <p class="banner">DEV ONLY</p>
-  <h1>Continue as…</h1>
-  <p>Signing into <code>{{.Provider}}</code>. This is a local fake identity provider.</p>
-  <div class="personas">
-    {{range .Personas}}
-    <a class="persona{{if eq .ID $.LastID}} last{{end}}" href="{{continueURL $.Query .ID}}">
-      <strong>{{.Name}}</strong>
-      <div class="meta">{{.ID}}{{if .Email}} · {{.Email}}{{end}}</div>
-    </a>
-    {{end}}
-  </div>
+  <main class="sheet">
+    <header>
+      <div class="mark mark-sm">{{logo}}</div>
+      <p class="stamp">DEV ONLY</p>
+      <p class="kicker">Sign in with</p>
+      <h1 class="provider">{{providerLabel .Provider}}</h1>
+      <p class="lede">Pick a persona. This is a local fake identity provider.</p>
+    </header>
+    <p class="choose">Continue as…</p>
+    <div class="personas">
+      {{range .Personas}}
+      <a class="persona{{if eq .ID $.LastID}} last{{end}}" href="{{continueURL $.Query .ID}}">
+        <strong>{{.Name}}</strong>
+        <div class="meta">{{.ID}}{{if .Email}} · {{.Email}}{{end}}</div>
+      </a>
+      {{end}}
+    </div>
+  </main>
 </body>
 </html>
