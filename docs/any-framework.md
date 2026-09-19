@@ -110,3 +110,4 @@ See also:
 
 - [curl examples](../examples/curl/README.md)
 - [provider profiles](provider-profiles.md)
+- [Laravel Socialite adapter](socialite.md)

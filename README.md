@@ -3,10 +3,10 @@
 Local fake identity provider for social login development.
 
 Any language or framework can run OAuth / OIDC against localhost instead of
-real Google, GitHub, Apple, and friends. Laravel Socialite is a planned optional
-adapter, not the product boundary.
+real Google, GitHub, Apple, and friends. Laravel Socialite is an optional
+adapter (`milon/bohurupee-laravel`), not the product boundary.
 
-**Status:** local OAuth/OIDC server. **DEV ONLY** — bind to loopback by default.
+**Status:** local OAuth/OIDC server plus optional Socialite adapter. **DEV ONLY** — bind to loopback by default.
 
 ## Quick start
 
@@ -70,6 +70,9 @@ Provider-shaped payloads: [`docs/provider-profiles.md`](docs/provider-profiles.m
 
 Step-by-step curl: [`examples/curl/README.md`](examples/curl/README.md).
 Any framework / Auth.js: [`docs/any-framework.md`](docs/any-framework.md).
+Laravel Socialite: [`docs/socialite.md`](docs/socialite.md),
+[`examples/laravel-socialite`](examples/laravel-socialite), and the sibling
+package `milon/bohurupee-laravel`.
 Dependency-free Python OIDC client:
 [`examples/oidc-client`](examples/oidc-client/README.md).
 

@@ -14,10 +14,15 @@ coverage.out
 __pycache__/
 *.py[cod]
 
+# PHP / Laravel example
+/examples/laravel-socialite/vendor/
+/examples/laravel-socialite/.env
+
 # IDE / OS
 .idea/
 .vscode/
 .DS_Store
+bohurupee.code-workspace
 .cursor/
 *.swp
 /local-docs/
