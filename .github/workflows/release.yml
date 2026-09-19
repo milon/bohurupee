@@ -85,6 +85,37 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Personal token that can push to milon/homebrew-bohurupee.
-          # Empty skips the tap upload; the GitHub Release still publishes.
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Publish Homebrew cask
+        env:
+          DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${DEPLOY_KEY}" ]]; then
+            echo "HOMEBREW_TAP_DEPLOY_KEY is not set; the tap was not updated." >&2
+            exit 1
+          fi
+          cask="dist/homebrew/Casks/bohurupee.rb"
+          if [[ ! -f "${cask}" ]]; then
+            echo "Cask was not rendered at ${cask}" >&2
+            find dist -type f >&2
+            exit 1
+          fi
+          install -d -m 700 "${HOME}/.ssh"
+          printf '%s\n' "${DEPLOY_KEY}" > "${HOME}/.ssh/homebrew_tap"
+          chmod 600 "${HOME}/.ssh/homebrew_tap"
+          ssh-keyscan -t ed25519 github.com >> "${HOME}/.ssh/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i ${HOME}/.ssh/homebrew_tap -o IdentitiesOnly=yes"
+          git clone --depth 1 git@github.com:milon/homebrew-bohurupee.git /tmp/homebrew-tap
+          install -d /tmp/homebrew-tap/Casks
+          cp "${cask}" /tmp/homebrew-tap/Casks/bohurupee.rb
+          git -C /tmp/homebrew-tap add Casks/bohurupee.rb
+          if git -C /tmp/homebrew-tap diff --cached --quiet; then
+            echo "Cask already matches this release."
+            exit 0
+          fi
+          git -C /tmp/homebrew-tap \
+            -c user.name=milon \
+            -c user.email=milon@punt.com \
+            commit -m "Point the cask at the ${GITHUB_REF_NAME} release."
+          git -C /tmp/homebrew-tap push origin HEAD:main

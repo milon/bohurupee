@@ -67,9 +67,8 @@ dockers_v2:
       org.opencontainers.image.version: "{{ .Version }}"
       org.opencontainers.image.revision: "{{ .FullCommit }}"
 
-# Published to github.com/milon/homebrew-bohurupee when HOMEBREW_TAP_TOKEN
-# can push to that repository. Without the token the cask is still rendered
-# under dist/ and the release continues.
+# Rendered under dist/homebrew/Casks. The release workflow pushes that file
+# to github.com/milon/homebrew-bohurupee with a deploy key.
 homebrew_casks:
   - name: bohurupee
     ids:
@@ -77,8 +76,7 @@ homebrew_casks:
     repository:
       owner: milon
       name: homebrew-bohurupee
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    skip_upload: "{{ if .Env.HOMEBREW_TAP_TOKEN }}false{{ else }}true{{ end }}"
+    skip_upload: "true"
     homepage: "https://github.com/milon/bohurupee"
     description: "Local fake identity provider for OAuth and OIDC development. DEV ONLY."
     hooks:
