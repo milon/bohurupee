@@ -123,6 +123,7 @@ var knownProviders = map[string]string{
 	"slack":     "Slack",
 	"discord":   "Discord",
 	"bitbucket": "Bitbucket",
+	"jumpcloud": "JumpCloud",
 	"okta":      "Okta",
 	"auth0":     "Auth0",
 }

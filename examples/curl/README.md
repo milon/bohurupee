@@ -115,7 +115,8 @@ curl -s 'http://127.0.0.1:4190/google/jwks'
 Add `scope=openid` (and optionally `nonce=…`) on authorize. The token response
 then includes an RS256 `id_token` that verifies against JWKS.
 
-With `--config ./bohurupee.example.yaml`, `/github/userinfo` includes `login` and
-`avatar_url`. `/acme/userinfo` stays generic. See
+With `--config ./bohurupee.example.yaml`, `/github/userinfo` includes
+`html_url` from the GitHub template. `/acme/userinfo` uses the default
+template (`login`, `username`, …) and does not include GitHub-only fields. See
 [`docs/provider-profiles.md`](../../docs/provider-profiles.md).
 

@@ -212,11 +212,17 @@ include the matching `code_verifier`.
 
 ### Provider-shaped userinfo
 
-`/acme/userinfo` stays generic. A `providerProfiles` entry changes the JSON
-for that slug only. The example config already maps `github`, `google`,
-`facebook`, `twitch`, and `apple`.
+A slug that matches a built-in template uses that shape. `/github/userinfo`
+adds `login`, `avatar_url`, `html_url`, and `type` with no config. Any other
+slug, such as `/acme` or a Socialite driver that has no template, uses the
+default template: the generic fields plus `login`, `username`,
+`preferred_username`, `display_name`, `picture`, `avatar_url`, and
+`profile_image_url`.
 
-`/github/userinfo` adds `login`, `avatar_url`, `html_url`, and `type`.
+Set `responseTemplate: generic` on a profile to return only the generic
+fields. The example config also sets protocol and endpoints for a few slugs
+(`facebook` `/me`, Apple `form_post`).
+
 Generic fields (`id`, `email`, `name`, `nickname`, `avatar`) stay present so
 client getters keep working.
 

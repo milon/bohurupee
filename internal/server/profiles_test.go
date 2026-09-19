@@ -27,8 +27,11 @@ func TestAcmeUserinfoStaysGeneric(t *testing.T) {
 		t.Fatalf("%+v", info)
 	}
 	raw := userinfoMap(t, srv, "acme", authorizeCode(t, srv, "acme", false))
-	if _, ok := raw["login"]; ok {
-		t.Fatalf("generic acme should not have login: %v", raw)
+	if raw["login"] != "alice" || raw["preferred_username"] != "alice" {
+		t.Fatalf("default template: %v", raw)
+	}
+	if _, ok := raw["html_url"]; ok {
+		t.Fatalf("acme should not use the github template: %v", raw)
 	}
 }
 

@@ -30,7 +30,7 @@ func NewRegistry(in map[string]Profile) (*Registry, error) {
 		if !oauth.ValidProvider(key) {
 			return nil, fmt.Errorf("invalid providerProfiles key %q", name)
 		}
-		if p.Template != "" && Template(p.Template) == nil {
+		if p.Template != "" && !knownTemplate(p.Template) {
 			return nil, fmt.Errorf("providerProfiles.%s: unknown responseTemplate %q", name, p.Template)
 		}
 		r.byName[key] = p
@@ -75,15 +75,42 @@ func (r *Registry) UserinfoAliases() []string {
 
 // Render merges generic → template → custom response → persona overlay
 // so Socialite-style getters still see id/email/name/nickname/avatar.
+//
+// The template is the explicit responseTemplate, otherwise the built-in
+// template for this slug, otherwise the default template. responseTemplate
+// generic (or none) keeps only the generic fields.
 func Render(provider string, persona oauth.Persona, p Profile) map[string]any {
 	out := cloneMap(genericMap(persona, provider))
-	if fn := Template(p.Template); fn != nil {
+	if fn := selectTemplate(provider, p.Template); fn != nil {
 		out = mergeMaps(out, fn(provider, persona))
 	}
 	if len(p.Response) > 0 {
 		out = mergeMaps(out, interpolateMap(p.Response, provider, persona))
 	}
 	return mergeMaps(out, genericMap(persona, provider))
+}
+
+func knownTemplate(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "generic", "none":
+		return true
+	default:
+		return Template(name) != nil
+	}
+}
+
+func selectTemplate(provider, explicit string) TemplateFunc {
+	switch strings.ToLower(strings.TrimSpace(explicit)) {
+	case "generic", "none":
+		return nil
+	case "":
+		if fn := Template(provider); fn != nil {
+			return fn
+		}
+		return defaultTemplate
+	default:
+		return Template(explicit)
+	}
 }
 
 func genericMap(persona oauth.Persona, provider string) map[string]any {

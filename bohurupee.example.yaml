@@ -33,4 +33,18 @@ providerProfiles:
     protocol:
       response_mode: form_post
       id_token: true
+  jumpcloud:
+    responseTemplate: jumpcloud
+  gitlab:
+    responseTemplate: gitlab
+  bitbucket:
+    responseTemplate: bitbucket
+  slack:
+    responseTemplate: slack
+  linkedin:
+    responseTemplate: linkedin
+  discord:
+    responseTemplate: discord
+  microsoft:
+    responseTemplate: microsoft
 

@@ -1,17 +1,30 @@
 # Provider profiles
 
-By default every slug (`/acme`, `/google`, …) returns the **generic** userinfo
-object (`id`, `sub`, `email`, `email_verified`, `name`, `nickname`, `avatar`).
+Every slug returns the generic persona fields (`id`, `sub`, `email`,
+`email_verified`, `name`, `nickname`, `avatar`). On top of that:
 
-Set `providerProfiles` in `bohurupee.yaml` to overlay a built-in template and/or
-a custom JSON object. Same persona, different slug, different body.
+1. If `responseTemplate` is set, that template is used.
+2. Otherwise, if the slug matches a built-in template (`github`, `google`, …),
+   that template is used.
+3. Otherwise the **default** template is used. It adds the aliases Socialite
+   drivers commonly read (`login`, `username`, `preferred_username`,
+   `display_name`, `picture`, `avatar_url`, `profile_image_url`), so an
+   unlisted driver still works.
+
+`responseTemplate: generic` skips the extra fields and returns only the
+generic object.
+
+Set `providerProfiles` in `bohurupee.yaml` to pick a template, add a custom
+JSON object, or change endpoints and protocol. Same persona, different slug,
+different body.
 
 ## Merge order
 
 Later steps overwrite earlier keys (nested objects are merged):
 
 1. Generic persona fields
-2. Built-in `responseTemplate` (if set)
+2. Matched template (explicit `responseTemplate`, else the slug's built-in
+   template, else `default`)
 3. Custom `response:` map (if set)
 4. Generic persona fields again (so `id` / `email` / `name` / `nickname` /
    `avatar` stay present for client getters)
@@ -40,18 +53,30 @@ providerProfiles:
       username: "{{nickname}}"
 ```
 
-`/acme/userinfo` stays generic. `/github/userinfo` adds `login`, `avatar_url`,
-`html_url`. `/staffdir/userinfo` is generic plus `title` and `username`.
+`/acme/userinfo` uses the default template (`login`, `username`, …) and does
+not include GitHub-only fields. `/github/userinfo` adds `login`, `avatar_url`,
+`html_url` because the slug matches the `github` template, even with no
+`providerProfiles` entry. `/staffdir/userinfo` is the default template plus
+`title` and `username`.
 
 ## Built-in templates
 
 | Name | Extra fields (typical) |
 |------|------------------------|
+| `default` | `login`, `username`, `preferred_username`, `display_name`, `picture`, `avatar_url`, `profile_image_url` |
+| `generic` | no extra fields |
 | `github` | `login`, `avatar_url`, `html_url`, `type` |
 | `google` | `picture`, `given_name`, `family_name`, `verified_email` |
 | `facebook` | `picture.data.url` |
 | `twitch` | `login`, `display_name`, `profile_image_url` |
 | `apple` | keeps generic userinfo; see protocol below |
+| `jumpcloud` | `preferred_username`, `given_name`, `family_name`, `jc_org`, `member_of` |
+| `gitlab` | `username`, `avatar_url`, `web_url`, `state` |
+| `bitbucket` | `username`, `display_name`, `uuid`, `links.avatar.href` |
+| `slack` | `user.name`, `user.real_name`, `user.profile.email`, `user.profile.image_192` |
+| `linkedin` | `given_name`, `family_name`, `picture` |
+| `discord` | `username`, `global_name`, `discriminator` |
+| `microsoft` | `displayName`, `givenName`, `surname`, `mail`, `userPrincipalName` |
 
 ## `endpoints`
 
