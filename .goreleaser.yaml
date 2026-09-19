@@ -1,4 +1,4 @@
-# Stub for later release (M7). Do not publish from this file yet.
+# Stub for later release. Do not publish from this file yet.
 version: 2
 
 project_name: bohurupee
@@ -9,6 +9,8 @@ builds:
     binary: bohurupee
     env:
       - CGO_ENABLED=0
+    ldflags:
+      - -B=gobuildid
     goos:
       - darwin
       - linux

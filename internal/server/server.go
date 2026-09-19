@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"time"
 
 	"github.com/milon/bohurupee/internal/listen"
+	"github.com/milon/bohurupee/internal/oauth"
 )
 
 const homeTmpl = `<!DOCTYPE html>
@@ -26,27 +28,47 @@ const homeTmpl = `<!DOCTYPE html>
   <p>Local fake identity provider. Do not expose this process beyond your machine.</p>
   <p>Listening at <code>{{.Listen}}</code></p>
   <p>Open <a href="{{.URL}}">{{.URL}}</a></p>
+  <p>OAuth (generic, Alice): <code>/{provider}/authorize</code>, <code>/{provider}/token</code>, <code>/{provider}/userinfo</code></p>
 </body>
 </html>
 `
 
+type Options struct {
+	Addr        listen.Addr
+	AutoApprove bool
+	Clock       oauth.Clock
+	CodeTTL     time.Duration
+	TokenTTL    time.Duration
+}
+
 type Server struct {
-	Addr listen.Addr
-	mux  *http.ServeMux
-	page *template.Template
+	Addr        listen.Addr
+	mux         *http.ServeMux
+	page        *template.Template
+	store       *oauth.Store
+	autoApprove bool
 }
 
 func New(addr listen.Addr) (*Server, error) {
+	return NewWithOptions(Options{Addr: addr})
+}
+
+func NewWithOptions(opts Options) (*Server, error) {
 	t, err := template.New("home").Parse(homeTmpl)
 	if err != nil {
 		return nil, fmt.Errorf("parse home template: %w", err)
 	}
 	s := &Server{
-		Addr: addr,
-		mux:  http.NewServeMux(),
-		page: t,
+		Addr:        opts.Addr,
+		mux:         http.NewServeMux(),
+		page:        t,
+		store:       oauth.NewStore(opts.Clock, opts.CodeTTL, opts.TokenTTL),
+		autoApprove: opts.AutoApprove,
 	}
 	s.mux.HandleFunc("GET /{$}", s.handleHome)
+	s.mux.HandleFunc("GET /{provider}/authorize", s.handleAuthorize)
+	s.mux.HandleFunc("POST /{provider}/token", s.handleToken)
+	s.mux.HandleFunc("GET /{provider}/userinfo", s.handleUserinfo)
 	return s, nil
 }
 

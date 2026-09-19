@@ -1,0 +1,4 @@
+# mise was reading `go 1.22` in go.mod as "install Go 1.22.x".
+# That toolchain omits Mach-O LC_UUID; dyld on macOS 26 aborts the binary.
+[tools]
+go = "1.27.1"

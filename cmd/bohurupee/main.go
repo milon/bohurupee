@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/milon/bohurupee/internal/listen"
 	"github.com/milon/bohurupee/internal/server"
@@ -38,11 +39,23 @@ func run(args []string) error {
 		log.Printf("WARNING: --dangerously-bind-all-interfaces is set; binding %s (DEV ONLY)", addr.String())
 	}
 
-	srv, err := server.New(addr)
+	srv, err := server.NewWithOptions(server.Options{
+		Addr:        addr,
+		AutoApprove: envTruthy("BOHURUPEE_AUTO_APPROVE"),
+	})
 	if err != nil {
 		return err
 	}
 
 	log.Printf("Bohurupee (DEV ONLY) listening on %s", addr.DisplayURL())
 	return http.ListenAndServe(addr.String(), srv.Handler())
+}
+
+func envTruthy(key string) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(key))) {
+	case "1", "true", "yes", "alice":
+		return true
+	default:
+		return false
+	}
 }
