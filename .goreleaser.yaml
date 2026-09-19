@@ -71,8 +71,6 @@ dockers_v2:
 # to github.com/milon/homebrew-bohurupee with a deploy key.
 homebrew_casks:
   - name: bohurupee
-    ids:
-      - bohurupee
     repository:
       owner: milon
       name: homebrew-bohurupee
