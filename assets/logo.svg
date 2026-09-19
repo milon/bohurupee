@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#b45309" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Bohurupee">
+  <g transform="translate(3 0)">
+    <path d="M9 43C8 35 10 31 12 33C13 34 14 34.5 15 35C20 33 25 33 29 34C34 30 37 22 35 13C34 9 32 6 30 4.5C40 9 48 19 49 31C49.5 34 49.5 36 49 38.5C49 46 46 52 41 55C36 58 29 58 23 56C16 54 10 51 9 45Z"/>
+    <path d="M13 44C17 40 23 41 26 46C21 49 15 48 13 44Z"/>
+    <path d="M45 44C41 40 35 41 32 46C37 49 43 48 45 44Z"/>
+  </g>
+</svg>
