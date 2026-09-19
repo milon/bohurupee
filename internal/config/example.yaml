@@ -1,0 +1,36 @@
+port: 4190
+bind: 127.0.0.1
+pkce: optional
+idToken: openid
+openClient: true
+
+personas:
+  - id: alice
+    email: alice@example.com
+    name: Alice Admin
+    nickname: alice
+  - id: bob
+    email: bob@example.com
+    name: Bob User
+  - id: carol
+    email: carol@example.com
+    name: Carol Reviewer
+    nickname: carol
+
+providerProfiles:
+  github:
+    responseTemplate: github
+  google:
+    responseTemplate: google
+  facebook:
+    responseTemplate: facebook
+    endpoints:
+      userinfo: /me
+  twitch:
+    responseTemplate: twitch
+  apple:
+    responseTemplate: apple
+    protocol:
+      response_mode: form_post
+      id_token: true
+

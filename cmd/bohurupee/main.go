@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -23,8 +24,16 @@ func main() {
 }
 
 func run(args []string) error {
+	if len(args) > 0 && args[0] == "init" {
+		return runInit(args[1:])
+	}
+
 	fs := flag.NewFlagSet("bohurupee", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
+	fs.Usage = func() {
+		fmt.Fprintf(fs.Output(), "Usage: bohurupee [flags]\n       bohurupee init [--config path] [--force]\n\n")
+		fs.PrintDefaults()
+	}
 
 	inDocker := envTruthy("BOHURUPEE_IN_DOCKER")
 	defaultBind, dockerAllowsNonLoopback := bindDefaults(inDocker)
@@ -115,6 +124,33 @@ func resolveHost(host string, bindFromFile, bindFromFlag, inDocker bool) string 
 		return "127.0.0.1"
 	}
 	return host
+}
+
+func runInit(args []string) error {
+	fs := flag.NewFlagSet("bohurupee init", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	path := fs.String("config", config.DefaultPath, "config file to write")
+	force := fs.Bool("force", false, "replace an existing config file")
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
+		return err
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("unexpected argument %q", fs.Arg(0))
+	}
+	if err := config.Init(*path, *force); err != nil {
+		return err
+	}
+	fmt.Printf("Wrote %s\n\nEdit personas, then start the server:\n\n", *path)
+	if *path == config.DefaultPath {
+		fmt.Println("  bohurupee")
+		fmt.Println("\nIt loads ./bohurupee.yaml automatically.")
+		return nil
+	}
+	fmt.Printf("  bohurupee --config %s\n", *path)
+	return nil
 }
 
 // bindDefaults is loopback unless the process is the container image.

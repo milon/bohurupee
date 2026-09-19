@@ -1,6 +1,13 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/milon/bohurupee/internal/config"
+)
 
 func TestBindDefaults(t *testing.T) {
 	t.Parallel()
@@ -28,5 +35,39 @@ func TestResolveHost(t *testing.T) {
 	}
 	if got := resolveHost("192.168.1.2", false, true, true); got != "192.168.1.2" {
 		t.Fatalf("flag bind = %s", got)
+	}
+}
+
+func TestInitCommand(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+
+	if err := run([]string{"init"}); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.LoadPath(config.DefaultPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Personas) < 2 || cfg.Personas[1].ID != "bob" {
+		t.Fatalf("personas = %+v", cfg.Personas)
+	}
+
+	if err := run([]string{"init"}); err == nil || !strings.Contains(err.Error(), "already exists") {
+		t.Fatalf("overwrite err = %v", err)
+	}
+	if err := run([]string{"init", "--force"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := run([]string{"init", "extra"}); err == nil {
+		t.Fatal("expected unexpected argument error")
+	}
+
+	other := filepath.Join(dir, "custom.yaml")
+	if err := run([]string{"init", "--config", other}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(other); err != nil {
+		t.Fatal(err)
 	}
 }

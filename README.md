@@ -36,9 +36,14 @@ is one file. It does not need Node, PHP, or a database.
 curl -fsSL -o bohurupee.tar.gz \
   https://github.com/milon/bohurupee/releases/download/v0.1/bohurupee_0.1_darwin_arm64.tar.gz
 tar -xzf bohurupee.tar.gz
-./bohurupee --version
-./bohurupee --config ./bohurupee.example.yaml
+./bohurupee init
+./bohurupee
 ```
+
+`init` writes `bohurupee.yaml` in the current directory (Alice, Bob, Carol, and
+the built-in provider profiles). It will not replace a file that is already
+there unless you pass `--force`. Then start the server with no flags: it
+loads `./bohurupee.yaml` on its own.
 
 Open [http://127.0.0.1:4190/](http://127.0.0.1:4190/). The home page lists
 personas, endpoints, and URLs you can copy.
@@ -55,7 +60,11 @@ docker run --rm -p 127.0.0.1:4190:4190 ghcr.io/milon/bohurupee:v0.1
 
 Do not map `0.0.0.0:4190` on a shared network. If you mount a config file,
 set `bind: 0.0.0.0` in it. `bind: 127.0.0.1` listens on container loopback,
-which Docker cannot publish.
+which Docker cannot publish. To write that file on the host:
+
+```bash
+docker run --rm -v "$PWD:/work" -w /work ghcr.io/milon/bohurupee:v0.1 init
+```
 
 ### From source
 
@@ -64,7 +73,8 @@ and library list.
 
 ```bash
 go build -o ./bohurupee ./cmd/bohurupee
-./bohurupee --config ./bohurupee.example.yaml
+./bohurupee init
+./bohurupee
 ```
 
 ## Use it
@@ -160,8 +170,18 @@ survives restarts.
 
 ### Personas and config
 
-Copy `bohurupee.example.yaml` to `bohurupee.yaml`, or pass `--config`. The
-server reads it on startup. You do not rebuild to change people.
+From the project directory:
+
+```bash
+bohurupee init
+```
+
+That writes `bohurupee.yaml`. Edit it, then start the server. It reads the
+file on startup. You do not rebuild to change people. `--config` writes or
+loads a different path. `--force` replaces a config that is already there.
+
+If you would rather not run `init`, copy `bohurupee.example.yaml` to
+`bohurupee.yaml`. The two files start out the same.
 
 ```yaml
 port: 4190
@@ -224,6 +244,18 @@ Optional. Install `milon/bohurupee-laravel`, set `BOHURUPEE_ENABLED=true` and
 Setup, the production guard, and a minimal app are in
 [`docs/socialite.md`](docs/socialite.md) and
 [`examples/laravel-socialite`](examples/laravel-socialite).
+
+## Commands
+
+```bash
+bohurupee init
+bohurupee init --config ./other.yaml
+bohurupee init --force
+```
+
+`init` writes a starter `bohurupee.yaml` in the current directory. Pass
+`--config` to choose another path. `--force` replaces a file that already
+exists.
 
 ## Flags
 
