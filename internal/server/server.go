@@ -8,6 +8,7 @@ import (
 
 	"github.com/milon/bohurupee/internal/listen"
 	"github.com/milon/bohurupee/internal/oauth"
+	"github.com/milon/bohurupee/internal/ui"
 )
 
 const homeTmpl = `<!DOCTYPE html>
@@ -28,7 +29,7 @@ const homeTmpl = `<!DOCTYPE html>
   <p>Local fake identity provider. Do not expose this process beyond your machine.</p>
   <p>Listening at <code>{{.Listen}}</code></p>
   <p>Open <a href="{{.URL}}">{{.URL}}</a></p>
-  <p>OAuth (generic, Alice): <code>/{provider}/authorize</code>, <code>/{provider}/token</code>, <code>/{provider}/userinfo</code></p>
+  <p>OAuth: <code>/{provider}/authorize</code> (consent), <code>/{provider}/token</code>, <code>/{provider}/userinfo</code></p>
 </body>
 </html>
 `
@@ -39,14 +40,19 @@ type Options struct {
 	Clock       oauth.Clock
 	CodeTTL     time.Duration
 	TokenTTL    time.Duration
+	Personas    []oauth.Persona
+	PKCE        oauth.PKCEMode
 }
 
 type Server struct {
 	Addr        listen.Addr
 	mux         *http.ServeMux
 	page        *template.Template
+	ui          *ui.Templates
 	store       *oauth.Store
+	catalog     *oauth.Catalog
 	autoApprove bool
+	pkce        oauth.PKCEMode
 }
 
 func New(addr listen.Addr) (*Server, error) {
@@ -58,12 +64,31 @@ func NewWithOptions(opts Options) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse home template: %w", err)
 	}
+	pages, err := ui.Load()
+	if err != nil {
+		return nil, err
+	}
+	personas := opts.Personas
+	if len(personas) == 0 {
+		personas = []oauth.Persona{oauth.Alice}
+	}
+	catalog, err := oauth.NewCatalog(personas)
+	if err != nil {
+		return nil, err
+	}
+	pkce := opts.PKCE
+	if pkce == "" {
+		pkce = oauth.PKCEOptional
+	}
 	s := &Server{
 		Addr:        opts.Addr,
 		mux:         http.NewServeMux(),
 		page:        t,
+		ui:          pages,
 		store:       oauth.NewStore(opts.Clock, opts.CodeTTL, opts.TokenTTL),
+		catalog:     catalog,
 		autoApprove: opts.AutoApprove,
+		pkce:        pkce,
 	}
 	s.mux.HandleFunc("GET /{$}", s.handleHome)
 	s.mux.HandleFunc("GET /{provider}/authorize", s.handleAuthorize)

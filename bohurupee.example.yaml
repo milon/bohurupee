@@ -1,0 +1,17 @@
+port: 4190
+bind: 127.0.0.1
+pkce: optional
+openClient: true
+
+personas:
+  - id: alice
+    email: alice@example.com
+    name: Alice Admin
+    nickname: alice
+  - id: bob
+    email: bob@example.com
+    name: Bob User
+  - id: carol
+    email: carol@example.com
+    name: Carol Reviewer
+    nickname: carol

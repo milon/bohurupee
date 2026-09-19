@@ -1,7 +1,8 @@
 # Curl against Bohurupee (generic OAuth)
 
-These steps complete authorization-code flow as the hardcoded **Alice** persona.
-There is no consent UI yet — auto-approve with `?auto=alice` or
+These steps complete authorization-code flow. In a browser, `/google/authorize`
+shows a consent page (Alice / Bob / Carol with `--config ./bohurupee.example.yaml`).
+For curl, auto-approve with `?auto=alice` (or `?auto=bob`) or
 `BOHURUPEE_AUTO_APPROVE=1`.
 
 Any provider slug works (`google`, `acme`, …). The `id` / `sub` prefix follows
@@ -10,7 +11,7 @@ the path.
 Start the server:
 
 ```bash
-go run ./cmd/bohurupee
+go run ./cmd/bohurupee --config ./bohurupee.example.yaml
 ```
 
 ## 1. Authorize

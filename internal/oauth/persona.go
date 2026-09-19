@@ -1,8 +1,6 @@
 package oauth
 
-import "strings"
-
-// Alice is the hardcoded persona. YAML personas arrive later.
+// Alice is the built-in persona used when no YAML config is loaded.
 var Alice = Persona{
 	ID:            "alice",
 	Email:         "alice@example.com",
@@ -46,11 +44,4 @@ func (p Persona) Userinfo(provider string) Userinfo {
 
 func StableID(provider, personaID string) string {
 	return provider + ":" + personaID
-}
-
-func PersonaByID(id string) (Persona, bool) {
-	if strings.EqualFold(id, Alice.ID) {
-		return Alice, true
-	}
-	return Persona{}, false
 }

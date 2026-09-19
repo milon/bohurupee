@@ -8,72 +8,170 @@ import (
 	"strings"
 
 	"github.com/milon/bohurupee/internal/oauth"
+	"github.com/milon/bohurupee/internal/ui"
 )
 
+const personaCookie = "bohurupee_persona"
+
+type authRequest struct {
+	Provider            string
+	ClientID            string
+	RedirectURI         string
+	ResponseType        string
+	State               string
+	ResponseMode        string
+	CodeChallenge       string
+	CodeChallengeMethod string
+	Auto                string
+}
+
 func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
-	provider := r.PathValue("provider")
-	if !oauth.ValidProvider(provider) {
-		http.Error(w, "invalid provider", http.StatusBadRequest)
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	q := r.URL.Query()
-	clientID := strings.TrimSpace(q.Get("client_id"))
-	redirectURI := strings.TrimSpace(q.Get("redirect_uri"))
-	responseType := q.Get("response_type")
-	state := q.Get("state")
-
-	if clientID == "" {
-		http.Error(w, "missing client_id", http.StatusBadRequest)
-		return
-	}
-	if err := validateRedirectURI(redirectURI); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if responseType != "code" {
-		http.Error(w, "response_type must be code", http.StatusBadRequest)
-		return
-	}
-	if state == "" {
-		http.Error(w, "missing state", http.StatusBadRequest)
-		return
-	}
-
-	persona, err := s.autoPersona(q.Get("auto"))
+	req, err := parseAuthRequest(r, s.pkce)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	code, err := s.store.IssueCode(provider, clientID, redirectURI, persona.ID)
+	persona, err := s.resolvePersona(req.Auto)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if persona == nil {
+		s.renderConsent(w, r, req)
+		return
+	}
+
+	code, err := s.store.IssueCode(oauth.IssueCodeParams{
+		Provider:    req.Provider,
+		ClientID:    req.ClientID,
+		RedirectURI: req.RedirectURI,
+		PersonaID:   persona.ID,
+		Challenge:   req.CodeChallenge,
+		Method:      req.CodeChallengeMethod,
+	})
 	if err != nil {
 		http.Error(w, "could not issue code", http.StatusInternalServerError)
 		return
 	}
 
-	loc, err := redirectWithCode(redirectURI, code, state)
+	http.SetCookie(w, &http.Cookie{
+		Name:     personaCookie,
+		Value:    persona.ID,
+		Path:     "/",
+		MaxAge:   30 * 24 * 60 * 60,
+		SameSite: http.SameSiteLaxMode,
+		HttpOnly: true,
+	})
+	w.Header().Set("Cache-Control", "no-store")
+
+	if req.ResponseMode == "form_post" {
+		html, err := s.ui.RenderFormPost(ui.FormPostData{
+			Action: req.RedirectURI,
+			Code:   code,
+			State:  req.State,
+		})
+		if err != nil {
+			http.Error(w, "template error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(html)
+		return
+	}
+
+	loc, err := redirectWithCode(req.RedirectURI, code, req.State)
 	if err != nil {
 		http.Error(w, "invalid redirect_uri", http.StatusBadRequest)
 		return
 	}
-	w.Header().Set("Cache-Control", "no-store")
 	http.Redirect(w, r, loc, http.StatusFound)
 }
 
-func (s *Server) autoPersona(auto string) (oauth.Persona, error) {
-	auto = strings.TrimSpace(auto)
+func parseAuthRequest(r *http.Request, pkce oauth.PKCEMode) (authRequest, error) {
+	provider := r.PathValue("provider")
+	if !oauth.ValidProvider(provider) {
+		return authRequest{}, fmt.Errorf("invalid provider")
+	}
+	q := r.URL.Query()
+	req := authRequest{
+		Provider:            provider,
+		ClientID:            strings.TrimSpace(q.Get("client_id")),
+		RedirectURI:         strings.TrimSpace(q.Get("redirect_uri")),
+		ResponseType:        q.Get("response_type"),
+		State:               q.Get("state"),
+		ResponseMode:        q.Get("response_mode"),
+		CodeChallenge:       q.Get("code_challenge"),
+		CodeChallengeMethod: q.Get("code_challenge_method"),
+		Auto:                strings.TrimSpace(q.Get("auto")),
+	}
+	if req.ClientID == "" {
+		return authRequest{}, fmt.Errorf("missing client_id")
+	}
+	if err := validateRedirectURI(req.RedirectURI); err != nil {
+		return authRequest{}, err
+	}
+	if req.ResponseType != "code" {
+		return authRequest{}, fmt.Errorf("response_type must be code")
+	}
+	if req.State == "" {
+		return authRequest{}, fmt.Errorf("missing state")
+	}
+	switch req.ResponseMode {
+	case "", "query":
+		req.ResponseMode = "query"
+	case "form_post":
+	default:
+		return authRequest{}, fmt.Errorf("response_mode must be query or form_post")
+	}
+	method, err := oauth.NormalizeChallengeMethod(req.CodeChallengeMethod, req.CodeChallenge)
+	if err != nil {
+		return authRequest{}, err
+	}
+	req.CodeChallengeMethod = method
+	if err := oauth.CheckAuthorizePKCE(pkce, req.CodeChallenge); err != nil {
+		return authRequest{}, err
+	}
+	return req, nil
+}
+
+func (s *Server) resolvePersona(auto string) (*oauth.Persona, error) {
 	if auto != "" {
-		p, ok := oauth.PersonaByID(auto)
+		p, ok := s.catalog.Lookup(auto)
 		if !ok {
-			return oauth.Persona{}, fmt.Errorf("unknown persona %q (only alice is available)", auto)
+			return nil, fmt.Errorf("unknown persona %q", auto)
 		}
-		return p, nil
+		return &p, nil
 	}
 	if s.autoApprove {
-		return oauth.Alice, nil
+		p := s.catalog.Default()
+		return &p, nil
 	}
-	return oauth.Persona{}, fmt.Errorf("auto-approve required: pass ?auto=alice or set BOHURUPEE_AUTO_APPROVE=1")
+	return nil, nil
+}
+
+func (s *Server) renderConsent(w http.ResponseWriter, r *http.Request, req authRequest) {
+	last := ""
+	if c, err := r.Cookie(personaCookie); err == nil {
+		if _, ok := s.catalog.Lookup(c.Value); ok {
+			last = c.Value
+		}
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	if err := s.ui.WriteConsent(w, ui.ConsentData{
+		Provider: req.Provider,
+		Query:    r.URL.Query(),
+		Personas: s.catalog.All(),
+		LastID:   last,
+	}); err != nil {
+		http.Error(w, "template error", http.StatusInternalServerError)
+	}
 }
 
 func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
@@ -108,6 +206,7 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 
 	code := firstForm(r, "code")
 	redirectURI := firstForm(r, "redirect_uri")
+	verifier := firstForm(r, "code_verifier")
 	if code == "" {
 		writeTokenError(w, http.StatusBadRequest, "invalid_request", "missing code")
 		return
@@ -117,7 +216,7 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	access, expiresIn, _, err := s.store.ExchangeCode(provider, clientID, redirectURI, code)
+	access, expiresIn, _, err := s.store.ExchangeCode(provider, clientID, redirectURI, code, verifier)
 	if err != nil {
 		writeTokenError(w, http.StatusBadRequest, "invalid_grant", err.Error())
 		return
@@ -157,7 +256,7 @@ func (s *Server) handleUserinfo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
-	persona, ok := oauth.PersonaByID(personaID)
+	persona, ok := s.catalog.Lookup(personaID)
 	if !ok {
 		http.Error(w, "unknown persona", http.StatusInternalServerError)
 		return

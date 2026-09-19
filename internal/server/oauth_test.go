@@ -1,11 +1,15 @@
 package server
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
+	"html"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -14,15 +18,21 @@ import (
 	"github.com/milon/bohurupee/internal/oauth"
 )
 
-func TestAuthorizeRequiresAutoApprove(t *testing.T) {
+func TestAuthorizeShowsConsent(t *testing.T) {
 	t.Parallel()
 	srv := mustServer(t, Options{Addr: listen.Addr{Host: "127.0.0.1", Port: 4190}})
 
 	req := httptest.NewRequest(http.MethodGet, authorizeURL("google", false), nil)
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 body = %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	for _, needle := range []string{"DEV ONLY", "Alice Admin", "auto=alice"} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("consent missing %q\n%s", needle, body)
+		}
 	}
 }
 
@@ -134,6 +144,131 @@ func TestUserinfoRejectsWrongProviderToken(t *testing.T) {
 	}
 }
 
+func TestConsentBobThenUserinfo(t *testing.T) {
+	t.Parallel()
+	srv := mustServer(t, Options{
+		Addr:     listen.Addr{Host: "127.0.0.1", Port: 4190},
+		Personas: examplePersonas(),
+	})
+	code := authorizeCodePersona(t, srv, "google", "bob")
+	info := userinfoForCode(t, srv, "google", code, "")
+	if info.ID != "google:bob" || info.Name != "Bob User" {
+		t.Fatalf("userinfo = %+v", info)
+	}
+}
+
+func TestFormPostHitsRedirectReceiver(t *testing.T) {
+	t.Parallel()
+
+	var posted url.Values
+	recv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Error(err)
+		}
+		posted = cloneValues(r.PostForm)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	}))
+	t.Cleanup(recv.Close)
+
+	srv := mustServer(t, Options{Addr: listen.Addr{Host: "127.0.0.1", Port: 4190}})
+	q := url.Values{
+		"client_id":     {"dev-client"},
+		"redirect_uri":  {recv.URL + "/callback"},
+		"response_type": {"code"},
+		"state":         {"state-xyz"},
+		"response_mode": {"form_post"},
+		"auto":          {"alice"},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/google/authorize?"+q.Encode(), nil)
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("authorize status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	html := rec.Body.String()
+	action, values := extractCallbackForm(t, html)
+	postReq, err := http.NewRequest(http.MethodPost, action, strings.NewReader(values.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := recv.Client().Do(postReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if posted.Get("code") == "" || posted.Get("state") != "state-xyz" {
+		t.Fatalf("receiver posted = %v html = %s", posted, html)
+	}
+}
+
+func TestPKCERequiredAndS256(t *testing.T) {
+	t.Parallel()
+	srv := mustServer(t, Options{
+		Addr: listen.Addr{Host: "127.0.0.1", Port: 4190},
+		PKCE: oauth.PKCERequired,
+	})
+
+	missing := httptest.NewRequest(http.MethodGet, authorizeURL("google", true), nil)
+	missRec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(missRec, missing)
+	if missRec.Code != http.StatusBadRequest {
+		t.Fatalf("missing challenge status = %d", missRec.Code)
+	}
+
+	verifier := "pkce-verifier-value-that-is-long-enough"
+	sum := sha256.Sum256([]byte(verifier))
+	challenge := base64.RawURLEncoding.EncodeToString(sum[:])
+	q := url.Values{
+		"client_id":             {"dev-client"},
+		"redirect_uri":          {"http://127.0.0.1:9999/callback"},
+		"response_type":         {"code"},
+		"state":                 {"state-xyz"},
+		"auto":                  {"alice"},
+		"code_challenge":        {challenge},
+		"code_challenge_method": {"S256"},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/google/authorize?"+q.Encode(), nil)
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusFound {
+		t.Fatalf("authorize status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	loc, err := url.Parse(rec.Header().Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	code := loc.Query().Get("code")
+	body := exchangeTokenVerifier(t, srv, "google", code, "", http.StatusBadRequest)
+	if !strings.Contains(body, "invalid_grant") {
+		t.Fatalf("missing verifier body = %s", body)
+	}
+	_ = exchangeTokenVerifier(t, srv, "google", code, verifier, http.StatusOK)
+}
+
+func TestPKCEForbiddenRejectsChallenge(t *testing.T) {
+	t.Parallel()
+	srv := mustServer(t, Options{
+		Addr: listen.Addr{Host: "127.0.0.1", Port: 4190},
+		PKCE: oauth.PKCEForbidden,
+	})
+	q := url.Values{
+		"client_id":      {"dev-client"},
+		"redirect_uri":   {"http://127.0.0.1:9999/callback"},
+		"response_type":  {"code"},
+		"state":          {"state-xyz"},
+		"auto":           {"alice"},
+		"code_challenge": {"abc"},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/google/authorize?"+q.Encode(), nil)
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+}
+
 func completeFlow(t *testing.T, srv *Server, provider string) oauth.Userinfo {
 	t.Helper()
 	code := authorizeCode(t, srv, provider, false)
@@ -230,4 +365,114 @@ func mustServer(t *testing.T, opts Options) *Server {
 		t.Fatal(err)
 	}
 	return srv
+}
+
+func authorizeCodePersona(t *testing.T, srv *Server, provider, persona string) string {
+	t.Helper()
+	q := url.Values{
+		"client_id":     {"dev-client"},
+		"redirect_uri":  {"http://127.0.0.1:9999/callback"},
+		"response_type": {"code"},
+		"state":         {"state-xyz"},
+		"auto":          {persona},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/"+provider+"/authorize?"+q.Encode(), nil)
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusFound {
+		t.Fatalf("authorize status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	loc, err := url.Parse(rec.Header().Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	code := loc.Query().Get("code")
+	if code == "" {
+		t.Fatalf("missing code in %s", loc)
+	}
+	return code
+}
+
+func userinfoForCode(t *testing.T, srv *Server, provider, code, verifier string) oauth.Userinfo {
+	t.Helper()
+	tokenJSON := exchangeTokenVerifier(t, srv, provider, code, verifier, http.StatusOK)
+	var tok struct {
+		AccessToken string `json:"access_token"`
+	}
+	if err := json.Unmarshal([]byte(tokenJSON), &tok); err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/"+provider+"/userinfo", nil)
+	req.Header.Set("Authorization", "Bearer "+tok.AccessToken)
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("userinfo status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	var info oauth.Userinfo
+	if err := json.Unmarshal(rec.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+	return info
+}
+
+func exchangeTokenVerifier(t *testing.T, srv *Server, provider, code, verifier string, wantStatus int) string {
+	t.Helper()
+	form := url.Values{
+		"grant_type":    {"authorization_code"},
+		"code":          {code},
+		"redirect_uri":  {"http://127.0.0.1:9999/callback"},
+		"client_id":     {"dev-client"},
+		"client_secret": {"ignored"},
+	}
+	if verifier != "" {
+		form.Set("code_verifier", verifier)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/"+provider+"/token", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	body, err := io.ReadAll(rec.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != wantStatus {
+		t.Fatalf("token status = %d, want %d body = %s", rec.Code, wantStatus, body)
+	}
+	return string(body)
+}
+
+func examplePersonas() []oauth.Persona {
+	return []oauth.Persona{
+		oauth.Alice,
+		{ID: "bob", Email: "bob@example.com", EmailVerified: true, Name: "Bob User", Nickname: "bob", Avatar: "https://api.dicebear.com/9.x/identicon/svg?seed=bob"},
+		{ID: "carol", Email: "carol@example.com", EmailVerified: true, Name: "Carol Reviewer", Nickname: "carol", Avatar: "https://api.dicebear.com/9.x/identicon/svg?seed=carol"},
+	}
+}
+
+func extractCallbackForm(t *testing.T, page string) (action string, values url.Values) {
+	t.Helper()
+	actionRe := regexp.MustCompile(`<form[^>]*action="([^"]+)"`)
+	am := actionRe.FindStringSubmatch(page)
+	if len(am) != 2 {
+		t.Fatalf("no form action in %s", page)
+	}
+	action = html.UnescapeString(am[1])
+	values = url.Values{}
+	inputRe := regexp.MustCompile(`<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"`)
+	for _, m := range inputRe.FindAllStringSubmatch(page, -1) {
+		values.Set(html.UnescapeString(m[1]), html.UnescapeString(m[2]))
+	}
+	if values.Get("code") == "" {
+		t.Fatalf("no code input in %s", page)
+	}
+	return action, values
+}
+
+func cloneValues(v url.Values) url.Values {
+	out := make(url.Values, len(v))
+	for k, vs := range v {
+		out[k] = append([]string{}, vs...)
+	}
+	return out
 }

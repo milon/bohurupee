@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Bohurupee — returning to app</title>
+</head>
+<body>
+  <p>DEV ONLY — returning to the application…</p>
+  <form id="callback" method="post" action="{{.Action}}">
+    <input type="hidden" name="code" value="{{.Code}}">
+    <input type="hidden" name="state" value="{{.State}}">
+    <noscript><button type="submit">Continue</button></noscript>
+  </form>
+  <script>document.getElementById("callback").submit()</script>
+</body>
+</html>

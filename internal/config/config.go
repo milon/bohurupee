@@ -1,0 +1,135 @@
+package config
+
+import (
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/milon/bohurupee/internal/oauth"
+	"gopkg.in/yaml.v3"
+)
+
+const DefaultPath = "bohurupee.yaml"
+
+type File struct {
+	Port       int           `yaml:"port"`
+	Bind       string        `yaml:"bind"`
+	PKCE       string        `yaml:"pkce"`
+	OpenClient *bool         `yaml:"openClient"`
+	Personas   []filePersona `yaml:"personas"`
+}
+
+type filePersona struct {
+	ID            string `yaml:"id"`
+	Email         string `yaml:"email"`
+	EmailVerified *bool  `yaml:"email_verified"`
+	Name          string `yaml:"name"`
+	Nickname      string `yaml:"nickname"`
+	Avatar        string `yaml:"avatar"`
+}
+
+type Config struct {
+	Port       int
+	Bind       string
+	PKCE       oauth.PKCEMode
+	OpenClient bool
+	Personas   []oauth.Persona
+}
+
+func Defaults() Config {
+	return Config{
+		Port:       4190,
+		Bind:       "127.0.0.1",
+		PKCE:       oauth.PKCEOptional,
+		OpenClient: true,
+		Personas:   []oauth.Persona{oauth.Alice},
+	}
+}
+
+// LoadPath reads YAML from path. Empty path loads Defaults, then overlays
+// DefaultPath in the working directory when that file exists.
+func LoadPath(path string) (Config, error) {
+	cfg := Defaults()
+	if path == "" {
+		if _, err := os.Stat(DefaultPath); err != nil {
+			if os.IsNotExist(err) {
+				return cfg, nil
+			}
+			return Config{}, err
+		}
+		path = DefaultPath
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return Config{}, fmt.Errorf("read config %q: %w", path, err)
+	}
+	if err := overlayYAML(&cfg, raw); err != nil {
+		return Config{}, fmt.Errorf("config %q: %w", path, err)
+	}
+	return cfg, nil
+}
+
+func overlayYAML(cfg *Config, raw []byte) error {
+	var f File
+	if err := yaml.Unmarshal(raw, &f); err != nil {
+		return err
+	}
+	if f.Port != 0 {
+		cfg.Port = f.Port
+	}
+	if strings.TrimSpace(f.Bind) != "" {
+		cfg.Bind = strings.TrimSpace(f.Bind)
+	}
+	if strings.TrimSpace(f.PKCE) != "" {
+		mode, err := oauth.ParsePKCEMode(f.PKCE)
+		if err != nil {
+			return err
+		}
+		cfg.PKCE = mode
+	}
+	if f.OpenClient != nil {
+		cfg.OpenClient = *f.OpenClient
+	}
+	if f.Personas != nil {
+		if len(f.Personas) == 0 {
+			return fmt.Errorf("personas must not be empty")
+		}
+		ps := make([]oauth.Persona, 0, len(f.Personas))
+		for _, fp := range f.Personas {
+			p, err := fp.toPersona()
+			if err != nil {
+				return err
+			}
+			ps = append(ps, p)
+		}
+		cfg.Personas = ps
+	}
+	return nil
+}
+
+func (fp filePersona) toPersona() (oauth.Persona, error) {
+	id := strings.TrimSpace(fp.ID)
+	if !oauth.ValidProvider(id) {
+		return oauth.Persona{}, fmt.Errorf("invalid persona id %q", fp.ID)
+	}
+	verified := true
+	if fp.EmailVerified != nil {
+		verified = *fp.EmailVerified
+	}
+	nick := strings.TrimSpace(fp.Nickname)
+	if nick == "" {
+		nick = id
+	}
+	avatar := strings.TrimSpace(fp.Avatar)
+	if avatar == "" {
+		avatar = "https://api.dicebear.com/9.x/identicon/svg?seed=" + id
+	}
+	return oauth.Persona{
+		ID:            id,
+		Email:         strings.TrimSpace(fp.Email),
+		EmailVerified: verified,
+		Name:          strings.TrimSpace(fp.Name),
+		Nickname:      nick,
+		Avatar:        avatar,
+	}, nil
+}

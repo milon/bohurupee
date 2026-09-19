@@ -11,12 +11,12 @@ func TestStoreReuseAndExpiry(t *testing.T) {
 	clock := NewFrozenClock(time.Date(2026, 9, 19, 12, 0, 0, 0, time.UTC))
 	s := NewStore(clock, time.Minute, time.Hour)
 
-	code, err := s.IssueCode("google", "dev", "http://127.0.0.1:9/cb", "alice")
+	code, err := s.IssueCode(IssueCodeParams{Provider: "google", ClientID: "dev", RedirectURI: "http://127.0.0.1:9/cb", PersonaID: "alice"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, _, persona, err := s.ExchangeCode("google", "dev", "http://127.0.0.1:9/cb", code)
+	_, _, persona, err := s.ExchangeCode("google", "dev", "http://127.0.0.1:9/cb", code, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,17 +24,17 @@ func TestStoreReuseAndExpiry(t *testing.T) {
 		t.Fatalf("persona = %q", persona)
 	}
 
-	_, _, _, err = s.ExchangeCode("google", "dev", "http://127.0.0.1:9/cb", code)
+	_, _, _, err = s.ExchangeCode("google", "dev", "http://127.0.0.1:9/cb", code, "")
 	if err == nil {
 		t.Fatal("expected reused code to fail")
 	}
 
-	code2, err := s.IssueCode("google", "dev", "http://127.0.0.1:9/cb", "alice")
+	code2, err := s.IssueCode(IssueCodeParams{Provider: "google", ClientID: "dev", RedirectURI: "http://127.0.0.1:9/cb", PersonaID: "alice"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	clock.Advance(time.Minute)
-	_, _, _, err = s.ExchangeCode("google", "dev", "http://127.0.0.1:9/cb", code2)
+	_, _, _, err = s.ExchangeCode("google", "dev", "http://127.0.0.1:9/cb", code2, "")
 	if err == nil {
 		t.Fatal("expected expired code to fail")
 	}
@@ -44,11 +44,11 @@ func TestStoreProviderIsolation(t *testing.T) {
 	t.Parallel()
 
 	s := NewStore(nil, 0, 0)
-	code, err := s.IssueCode("google", "dev", "http://127.0.0.1:9/cb", "alice")
+	code, err := s.IssueCode(IssueCodeParams{Provider: "google", ClientID: "dev", RedirectURI: "http://127.0.0.1:9/cb", PersonaID: "alice"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := s.ExchangeCode("acme", "dev", "http://127.0.0.1:9/cb", code); err == nil {
+	if _, _, _, err := s.ExchangeCode("acme", "dev", "http://127.0.0.1:9/cb", code, ""); err == nil {
 		t.Fatal("expected provider mismatch")
 	}
 }

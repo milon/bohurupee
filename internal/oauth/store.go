@@ -27,6 +27,8 @@ type codeGrant struct {
 	ClientID    string
 	RedirectURI string
 	PersonaID   string
+	Challenge   string
+	Method      string
 	ExpiresAt   time.Time
 	Used        bool
 }
@@ -56,7 +58,16 @@ func NewStore(clock Clock, codeTTL, tokenTTL time.Duration) *Store {
 	}
 }
 
-func (s *Store) IssueCode(provider, clientID, redirectURI, personaID string) (string, error) {
+type IssueCodeParams struct {
+	Provider    string
+	ClientID    string
+	RedirectURI string
+	PersonaID   string
+	Challenge   string
+	Method      string
+}
+
+func (s *Store) IssueCode(p IssueCodeParams) (string, error) {
 	code, err := randomToken()
 	if err != nil {
 		return "", err
@@ -64,16 +75,18 @@ func (s *Store) IssueCode(provider, clientID, redirectURI, personaID string) (st
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.codes[code] = &codeGrant{
-		Provider:    provider,
-		ClientID:    clientID,
-		RedirectURI: redirectURI,
-		PersonaID:   personaID,
+		Provider:    p.Provider,
+		ClientID:    p.ClientID,
+		RedirectURI: p.RedirectURI,
+		PersonaID:   p.PersonaID,
+		Challenge:   p.Challenge,
+		Method:      p.Method,
 		ExpiresAt:   s.clock.Now().Add(s.codeTTL),
 	}
 	return code, nil
 }
 
-func (s *Store) ExchangeCode(provider, clientID, redirectURI, code string) (access string, expiresIn int, personaID string, err error) {
+func (s *Store) ExchangeCode(provider, clientID, redirectURI, code, verifier string) (access string, expiresIn int, personaID string, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -97,6 +110,9 @@ func (s *Store) ExchangeCode(provider, clientID, redirectURI, code string) (acce
 	}
 	if grant.RedirectURI != redirectURI {
 		return "", 0, "", fmt.Errorf("redirect_uri mismatch")
+	}
+	if err := VerifyPKCE(grant.Method, grant.Challenge, verifier); err != nil {
+		return "", 0, "", err
 	}
 
 	grant.Used = true

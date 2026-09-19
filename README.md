@@ -14,16 +14,21 @@ Requires [Go 1.24+](https://go.dev/dl/). (Recent macOS dyld refuses binaries
 without a Mach-O `LC_UUID`; the Go linker started emitting that in 1.24.)
 
 ```bash
-go run ./cmd/bohurupee
+go run ./cmd/bohurupee --config ./bohurupee.example.yaml
 # → http://127.0.0.1:4190
 ```
 
-Flags:
+Copy `bohurupee.example.yaml` to `bohurupee.yaml` (or pass `--config`) to change
+personas without rebuilding. CLI `--bind` / `--port` override the file.
+
+Authorization code flow. Open authorize in a browser to pick a persona, or
+auto-approve with `?auto=alice` / `BOHURUPEE_AUTO_APPROVE=1`.
 
 | Flag | Default | Purpose |
 |------|---------|---------|
 | `--bind` | `127.0.0.1` | Listen host |
 | `--port` | `4190` | Listen port |
+| `--config` | `./bohurupee.yaml` if present | Personas, PKCE mode, bind/port |
 | `--dangerously-bind-all-interfaces` | off | Allow a non-loopback bind |
 
 Non-loopback hosts (`0.0.0.0`, LAN IPs, …) are refused unless that last flag is set.
@@ -34,29 +39,34 @@ go test ./...
 
 ## Generic OAuth (any provider slug)
 
-Authorization code flow. Persona is hardcoded Alice until the consent UI exists.
+Authorization code flow. The authorize page lists configured personas. `id` /
+`sub` are `{provider}:{persona}`.
 
 | Method | Path | Notes |
 |--------|------|--------|
-| `GET` | `/{provider}/authorize` | Requires `client_id`, `redirect_uri`, `response_type=code`, `state`. Auto-approve with `?auto=alice` or `BOHURUPEE_AUTO_APPROVE=1`. |
-| `POST` | `/{provider}/token` | Form body and/or HTTP Basic. Open client (any secret). Codes are single-use, 2 minute TTL. |
-| `GET` | `/{provider}/userinfo` | `Authorization: Bearer …` → generic JSON (`id`/`sub` are `{provider}:alice`). |
+| `GET` | `/{provider}/authorize` | Requires `client_id`, `redirect_uri`, `response_type=code`, `state`. Consent UI, or `?auto=<persona>` / `BOHURUPEE_AUTO_APPROVE=1`. `response_mode=form_post` posts `code`/`state` to `redirect_uri`. |
+| `POST` | `/{provider}/token` | Form body and/or HTTP Basic. Open client (any secret). Codes are single-use, 2 minute TTL. PKCE `code_verifier` when a challenge was used. |
+| `GET` | `/{provider}/userinfo` | `Authorization: Bearer …` → generic JSON |
+
+PKCE mode in YAML: `optional` (default), `required`, or `forbidden`.
 
 Step-by-step curl: [`examples/curl/README.md`](examples/curl/README.md).
 
 ## Dependencies
 
-No third-party Go modules. Codes and bearer tokens are random hex in process
-memory; they vanish when the binary exits.
+Codes and bearer tokens are random hex in process memory; they vanish when the
+binary exits.
 
 | Dependency | Why |
 |------------|-----|
 | **Go 1.24+** (toolchain) | One static binary, no Node/PHP required to run the IdP. Module path is `github.com/milon/bohurupee`. 1.24+ so darwin builds include `LC_UUID` (required by dyld on recent macOS). |
-| **`flag` (stdlib)** | Two flags and a danger override. Cobra/urfave-cli would add a module and docs surface for a small CLI. |
-| **`net/http` (stdlib)** | Method-aware patterns (`GET /{$}`, `GET /{provider}/authorize`) cover home + OAuth without a third-party router. |
-| **`html/template` (stdlib)** | Home page interpolates the listen address; templates HTML-escape it. |
+| **`gopkg.in/yaml.v3`** | Load `bohurupee.yaml` personas and PKCE mode without a rebuild. |
+| **`flag` (stdlib)** | Bind/port/config flags and a danger override. |
+| **`net/http` (stdlib)** | Method-aware patterns cover home + OAuth without a third-party router. |
+| **`html/template` + `embed` (stdlib)** | Home page, consent UI, and `form_post` auto-submit HTML. |
 | **`net` (stdlib)** | Loopback check via `net.ParseIP` / `IP.IsLoopback` (and DNS lookup for hostnames like `localhost`). |
 | **`crypto/rand` + `encoding/hex` (stdlib)** | Authorization codes and access tokens. |
+| **`crypto/sha256` + `encoding/base64` (stdlib)** | PKCE S256. |
 | **`encoding/json` (stdlib)** | Token + userinfo JSON. |
 | **`net/url` (stdlib)** | Redirect `code`/`state` query on `redirect_uri`. |
 | **`sync` / `time` (stdlib)** | In-memory grant store, 2 minute code TTL, 1 hour token TTL. |
