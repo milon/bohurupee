@@ -16,20 +16,20 @@ You do not need Go, Node, or PHP to run Bohurupee. Download a binary, or build f
 
 ### Release binary
 
-Archives for v0.1.0 are on [GitHub Releases](https://github.com/milon/bohurupee/releases/tag/v0.1.0). Each one contains the `bohurupee` binary and `bohurupee.example.yaml`. `checksums.txt` sits next to the archives — check it before you run the file.
+Archives for v0.1 are on [GitHub Releases](https://github.com/milon/bohurupee/releases/tag/v0.1). Each one contains the `bohurupee` binary and `bohurupee.example.yaml`. `checksums.txt` sits next to the archives — check it before you run the file.
 
-| OS      | Architecture  | File                                  |
-|---------|---------------|---------------------------------------|
-| macOS   | Apple silicon | `bohurupee_0.1.0_darwin_arm64.tar.gz` |
-| macOS   | Intel         | `bohurupee_0.1.0_darwin_amd64.tar.gz` |
-| Linux   | x86_64        | `bohurupee_0.1.0_linux_amd64.tar.gz`  |
-| Linux   | arm64         | `bohurupee_0.1.0_linux_arm64.tar.gz`  |
-| Windows | x86_64        | `bohurupee_0.1.0_windows_amd64.zip`   |
+| OS      | Architecture  | File                                |
+|---------|---------------|-------------------------------------|
+| macOS   | Apple silicon | `bohurupee_0.1_darwin_arm64.tar.gz` |
+| macOS   | Intel         | `bohurupee_0.1_darwin_amd64.tar.gz` |
+| Linux   | x86_64        | `bohurupee_0.1_linux_amd64.tar.gz`  |
+| Linux   | arm64         | `bohurupee_0.1_linux_arm64.tar.gz`  |
+| Windows | x86_64        | `bohurupee_0.1_windows_amd64.zip`   |
 
 ```bash
 # example: macOS Apple silicon
 curl -fsSL -o bohurupee.tar.gz \
-  https://github.com/milon/bohurupee/releases/download/v0.1.0/bohurupee_0.1.0_darwin_arm64.tar.gz
+  https://github.com/milon/bohurupee/releases/download/v0.1/bohurupee_0.1_darwin_arm64.tar.gz
 tar -xzf bohurupee.tar.gz
 ./bohurupee --version
 ./bohurupee --config ./bohurupee.example.yaml
@@ -40,7 +40,7 @@ tar -xzf bohurupee.tar.gz
 `ghcr.io/milon/bohurupee` is a scratch image: the static binary and nothing else (no shell). The image sets `BOHURUPEE_IN_DOCKER=1`, so the process listens on `0.0.0.0` **inside** the container. Publish the host port on loopback only:
 
 ```bash
-docker run --rm -p 127.0.0.1:4190:4190 ghcr.io/milon/bohurupee:v0.1.0
+docker run --rm -p 127.0.0.1:4190:4190 ghcr.io/milon/bohurupee:v0.1
 ```
 
 Do not publish `0.0.0.0:4190` on a shared network. A config file with `bind: 127.0.0.1` listens on container loopback, which Docker cannot publish — use `bind: 0.0.0.0` in that file, or omit `--config`.
