@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build
+        run: go build -o /tmp/bohurupee ./cmd/bohurupee
+
+      - name: Run curl and OIDC examples
+        shell: bash
+        run: |
+          set -euo pipefail
+          /tmp/bohurupee --config ./bohurupee.example.yaml > /tmp/bohurupee.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; cat /tmp/bohurupee.log' EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4190/ >/dev/null; then
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              echo "Bohurupee exited before becoming ready" >&2
+              exit 1
+            fi
+            sleep 0.2
+          done
+          curl --fail --silent http://127.0.0.1:4190/ >/dev/null
+
+          ./examples/curl/run-all.sh
+          python3 ./examples/oidc-client/client.py

@@ -11,8 +11,28 @@ the path.
 Start the server:
 
 ```bash
-go run ./cmd/bohurupee --config ./bohurupee.example.yaml
+go build -o ./bohurupee ./cmd/bohurupee
+./bohurupee --config ./bohurupee.example.yaml
 ```
+
+Then run the automated examples:
+
+```bash
+./examples/curl/generic.sh  # /acme: generic JSON
+./examples/curl/github.sh   # /github: login, avatar_url, ...
+# or both:
+./examples/curl/run-all.sh
+```
+
+The scripts require `bash`, `curl`, and `python3`. Override the server or
+persona with environment variables:
+
+```bash
+BOHURUPEE_URL=http://127.0.0.1:14190 PERSONA=bob \
+  ./examples/curl/generic.sh
+```
+
+The remainder of this page shows the same flow one request at a time.
 
 ## 1. Authorize
 

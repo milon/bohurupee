@@ -6,23 +6,33 @@ Any language or framework can run OAuth / OIDC against localhost instead of
 real Google, GitHub, Apple, and friends. Laravel Socialite is a planned optional
 adapter, not the product boundary.
 
-**Status:** generic OAuth on localhost. **DEV ONLY** — bind to loopback by default.
+**Status:** local OAuth/OIDC server. **DEV ONLY** — bind to loopback by default.
 
-## Run from source
+## Quick start
 
 Requires [Go 1.25+](https://go.dev/dl/). (Recent macOS dyld refuses binaries
 without a Mach-O `LC_UUID`; the Go linker started emitting that in 1.24.)
 
 ```bash
-go run ./cmd/bohurupee --config ./bohurupee.example.yaml
-# → http://127.0.0.1:4190
+go build -o ./bohurupee ./cmd/bohurupee
+./bohurupee --config ./bohurupee.example.yaml
 ```
+
+In another terminal, run both curl examples:
+
+```bash
+./examples/curl/run-all.sh
+```
+
+The first flow returns generic `/acme` userinfo. The second returns
+GitHub-shaped userinfo from the same local server. Neither calls a real
+provider.
 
 Copy `bohurupee.example.yaml` to `bohurupee.yaml` (or pass `--config`) to change
 personas without rebuilding. CLI `--bind` / `--port` override the file.
 
-Authorization code flow. Open authorize in a browser to pick a persona, or
-auto-approve with `?auto=alice` / `BOHURUPEE_AUTO_APPROVE=1`.
+For browser login, open an authorize URL and pick a persona. Command-line
+examples auto-approve with `?auto=alice`.
 
 | Flag | Default | Purpose |
 |------|---------|---------|
@@ -59,6 +69,9 @@ restarts.
 Provider-shaped payloads: [`docs/provider-profiles.md`](docs/provider-profiles.md).
 
 Step-by-step curl: [`examples/curl/README.md`](examples/curl/README.md).
+Any framework / Auth.js: [`docs/any-framework.md`](docs/any-framework.md).
+Dependency-free Python OIDC client:
+[`examples/oidc-client`](examples/oidc-client/README.md).
 
 ## Dependencies
 
