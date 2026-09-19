@@ -1,0 +1,23 @@
+# Binaries
+/bohurupee
+/dist/
+*.exe
+
+# Go
+/bin/
+/vendor/
+*.test
+*.out
+coverage.out
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+.cursor/
+*.swp
+/local-docs/
+
+# Config with secrets (none expected, but ignore local overrides)
+/bohurupee.yaml
+!/bohurupee.example.yaml
