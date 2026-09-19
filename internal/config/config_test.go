@@ -36,6 +36,10 @@ func TestLoadExampleYAML(t *testing.T) {
 	if bob.Email != "bob@example.com" || bob.Name != "Bob User" || bob.Nickname != "bob" {
 		t.Fatalf("bob = %+v", bob)
 	}
+	gh, ok := cfg.Profiles["github"]
+	if !ok || gh.Template != "github" {
+		t.Fatalf("github profile = %+v ok=%v", gh, ok)
+	}
 }
 
 func TestOverlayKeepsDefaultPersonas(t *testing.T) {

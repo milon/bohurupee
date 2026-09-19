@@ -76,6 +76,7 @@ func run(args []string) error {
 		PKCE:        cfg.PKCE,
 		Signer:      signer,
 		IDToken:     cfg.IDToken,
+		Profiles:    cfg.Profiles,
 	})
 	if err != nil {
 		return err

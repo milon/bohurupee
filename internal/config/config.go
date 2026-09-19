@@ -7,18 +7,32 @@ import (
 
 	"github.com/milon/bohurupee/internal/oauth"
 	"github.com/milon/bohurupee/internal/oidc"
+	"github.com/milon/bohurupee/internal/profiles"
 	"gopkg.in/yaml.v3"
 )
 
 const DefaultPath = "bohurupee.yaml"
 
 type File struct {
-	Port       int           `yaml:"port"`
-	Bind       string        `yaml:"bind"`
-	PKCE       string        `yaml:"pkce"`
-	IDToken    string        `yaml:"idToken"`
-	OpenClient *bool         `yaml:"openClient"`
-	Personas   []filePersona `yaml:"personas"`
+	Port       int                    `yaml:"port"`
+	Bind       string                 `yaml:"bind"`
+	PKCE       string                 `yaml:"pkce"`
+	IDToken    string                 `yaml:"idToken"`
+	OpenClient *bool                  `yaml:"openClient"`
+	Personas   []filePersona          `yaml:"personas"`
+	Profiles   map[string]fileProfile `yaml:"providerProfiles"`
+}
+
+type fileProfile struct {
+	ResponseTemplate string            `yaml:"responseTemplate"`
+	Response         map[string]any    `yaml:"response"`
+	Endpoints        map[string]string `yaml:"endpoints"`
+	Protocol         fileProtocol      `yaml:"protocol"`
+}
+
+type fileProtocol struct {
+	ResponseMode string `yaml:"response_mode"`
+	IDToken      *bool  `yaml:"id_token"`
 }
 
 type filePersona struct {
@@ -37,6 +51,7 @@ type Config struct {
 	IDToken    oidc.IDTokenMode
 	OpenClient bool
 	Personas   []oauth.Persona
+	Profiles   map[string]profiles.Profile
 }
 
 func Defaults() Config {
@@ -114,6 +129,32 @@ func overlayYAML(cfg *Config, raw []byte) error {
 			ps = append(ps, p)
 		}
 		cfg.Personas = ps
+	}
+	if f.Profiles != nil {
+		out := make(map[string]profiles.Profile, len(f.Profiles))
+		for name, fp := range f.Profiles {
+			p := profiles.Profile{
+				Template:  strings.TrimSpace(fp.ResponseTemplate),
+				Response:  fp.Response,
+				Endpoints: fp.Endpoints,
+				Protocol: profiles.Protocol{
+					ResponseMode: strings.TrimSpace(fp.Protocol.ResponseMode),
+				},
+			}
+			if fp.Protocol.IDToken != nil {
+				p.Protocol.IDToken = *fp.Protocol.IDToken
+			}
+			switch p.Protocol.ResponseMode {
+			case "", "query", "form_post":
+			default:
+				return fmt.Errorf("providerProfiles.%s: protocol.response_mode must be query or form_post", name)
+			}
+			out[name] = p
+		}
+		if _, err := profiles.NewRegistry(out); err != nil {
+			return err
+		}
+		cfg.Profiles = out
 	}
 	return nil
 }

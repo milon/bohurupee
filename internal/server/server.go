@@ -9,6 +9,7 @@ import (
 	"github.com/milon/bohurupee/internal/listen"
 	"github.com/milon/bohurupee/internal/oauth"
 	"github.com/milon/bohurupee/internal/oidc"
+	"github.com/milon/bohurupee/internal/profiles"
 	"github.com/milon/bohurupee/internal/ui"
 )
 
@@ -45,6 +46,7 @@ type Options struct {
 	PKCE        oauth.PKCEMode
 	Signer      *oidc.Signer
 	IDToken     oidc.IDTokenMode
+	Profiles    map[string]profiles.Profile
 }
 
 type Server struct {
@@ -60,6 +62,7 @@ type Server struct {
 	tokenTTL    time.Duration
 	signer      *oidc.Signer
 	idToken     oidc.IDTokenMode
+	profiles    *profiles.Registry
 }
 
 func New(addr listen.Addr) (*Server, error) {
@@ -103,6 +106,10 @@ func NewWithOptions(opts Options) (*Server, error) {
 	if tokenTTL <= 0 {
 		tokenTTL = oauth.DefaultTokenTTL
 	}
+	reg, err := profiles.NewRegistry(opts.Profiles)
+	if err != nil {
+		return nil, err
+	}
 	s := &Server{
 		Addr:        opts.Addr,
 		mux:         http.NewServeMux(),
@@ -116,6 +123,7 @@ func NewWithOptions(opts Options) (*Server, error) {
 		tokenTTL:    tokenTTL,
 		signer:      signer,
 		idToken:     idToken,
+		profiles:    reg,
 	}
 	s.mux.HandleFunc("GET /{$}", s.handleHome)
 	s.mux.HandleFunc("GET /{provider}/authorize", s.handleAuthorize)
@@ -124,6 +132,9 @@ func NewWithOptions(opts Options) (*Server, error) {
 	s.mux.HandleFunc("GET /{provider}/.well-known/openid-configuration", s.handleDiscovery)
 	s.mux.HandleFunc("GET /{provider}/jwks", s.handleJWKS)
 	s.mux.HandleFunc("GET /{provider}/auth/keys", s.handleJWKS)
+	for _, alias := range reg.UserinfoAliases() {
+		s.mux.HandleFunc("GET /{provider}/"+alias, s.handleUserinfo)
+	}
 	return s, nil
 }
 

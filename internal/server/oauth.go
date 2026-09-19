@@ -9,6 +9,7 @@ import (
 
 	"github.com/milon/bohurupee/internal/oauth"
 	"github.com/milon/bohurupee/internal/oidc"
+	"github.com/milon/bohurupee/internal/profiles"
 	"github.com/milon/bohurupee/internal/ui"
 )
 
@@ -39,6 +40,7 @@ func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	s.applyProfileDefaults(&req)
 
 	persona, err := s.resolvePersona(req.Auto)
 	if err != nil {
@@ -130,9 +132,7 @@ func parseAuthRequest(r *http.Request, pkce oauth.PKCEMode) (authRequest, error)
 		return authRequest{}, fmt.Errorf("missing state")
 	}
 	switch req.ResponseMode {
-	case "", "query":
-		req.ResponseMode = "query"
-	case "form_post":
+	case "", "query", "form_post":
 	default:
 		return authRequest{}, fmt.Errorf("response_mode must be query or form_post")
 	}
@@ -145,6 +145,16 @@ func parseAuthRequest(r *http.Request, pkce oauth.PKCEMode) (authRequest, error)
 		return authRequest{}, err
 	}
 	return req, nil
+}
+
+func (s *Server) applyProfileDefaults(req *authRequest) {
+	if req.ResponseMode == "" {
+		if p, ok := s.profiles.Get(req.Provider); ok && p.Protocol.ResponseMode != "" {
+			req.ResponseMode = p.Protocol.ResponseMode
+		} else {
+			req.ResponseMode = "query"
+		}
+	}
 }
 
 func (s *Server) resolvePersona(auto string) (*oauth.Persona, error) {
@@ -241,7 +251,7 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 		ExpiresIn:   ex.ExpiresIn,
 		Scope:       ex.Scope,
 	}
-	if oidc.WantIDToken(s.idToken, ex.Scope) {
+	if s.wantIDToken(provider, ex.Scope) {
 		persona, ok := s.catalog.Lookup(ex.PersonaID)
 		if !ok {
 			writeTokenError(w, http.StatusInternalServerError, "server_error", "unknown persona")
@@ -297,7 +307,19 @@ func (s *Server) handleUserinfo(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	_ = json.NewEncoder(w).Encode(persona.Userinfo(provider))
+	_ = json.NewEncoder(w).Encode(s.userinfoBody(provider, persona))
+}
+
+func (s *Server) userinfoBody(provider string, persona oauth.Persona) map[string]any {
+	p, _ := s.profiles.Get(provider)
+	return profiles.Render(provider, persona, p)
+}
+
+func (s *Server) wantIDToken(provider, scope string) bool {
+	if p, ok := s.profiles.Get(provider); ok && p.Protocol.IDToken {
+		return true
+	}
+	return oidc.WantIDToken(s.idToken, scope)
 }
 
 func clientCredentials(r *http.Request) (id, secret string, err error) {

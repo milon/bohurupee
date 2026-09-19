@@ -46,7 +46,7 @@ Authorization code flow. The authorize page lists configured personas. `id` /
 |--------|------|--------|
 | `GET` | `/{provider}/authorize` | Requires `client_id`, `redirect_uri`, `response_type=code`, `state`. Consent UI, or `?auto=<persona>` / `BOHURUPEE_AUTO_APPROVE=1`. `response_mode=form_post` posts `code`/`state` to `redirect_uri`. |
 | `POST` | `/{provider}/token` | Form body and/or HTTP Basic. Open client (any secret). Codes are single-use, 2 minute TTL. PKCE `code_verifier` when a challenge was used. |
-| `GET` | `/{provider}/userinfo` | `Authorization: Bearer …` → generic JSON |
+| `GET` | `/{provider}/userinfo` | `Authorization: Bearer …` → generic JSON, or a provider profile if configured |
 | `GET` | `/{provider}/.well-known/openid-configuration` | OIDC discovery (issuer, authorize, token, userinfo, jwks) |
 | `GET` | `/{provider}/jwks` | JWKS for `id_token` (alias `/{provider}/auth/keys`) |
 
@@ -55,6 +55,8 @@ PKCE mode in YAML: `optional` (default), `required`, or `forbidden`.
 `openid`; `idToken: always` issues one on every token response. The signing key
 is kept under your user config dir (`…/bohurupee/oidc.key`) so it survives
 restarts.
+
+Provider-shaped payloads: [`docs/provider-profiles.md`](docs/provider-profiles.md).
 
 Step-by-step curl: [`examples/curl/README.md`](examples/curl/README.md).
 
@@ -66,7 +68,7 @@ binary exits.
 | Dependency | Why |
 |------------|-----|
 | **Go 1.25+** (toolchain) | One static binary, no Node/PHP required to run the IdP. Module path is `github.com/milon/bohurupee`. 1.24+ so darwin builds include `LC_UUID` (required by dyld on recent macOS). |
-| **`gopkg.in/yaml.v3`** | Load `bohurupee.yaml` personas, PKCE, and id_token mode without a rebuild. |
+| **`gopkg.in/yaml.v3`** | Load personas, PKCE, id_token mode, and provider profiles. |
 | **`github.com/lestrrat-go/jwx/v3`** | Sign and serve RS256 `id_token` / JWKS. |
 | **`flag` (stdlib)** | Bind/port/config flags and a danger override. |
 | **`net/http` (stdlib)** | Method-aware patterns cover home + OAuth without a third-party router. |
