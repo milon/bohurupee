@@ -1,14 +1,10 @@
 package config
 
 import (
-	_ "embed"
 	"fmt"
 	"os"
 	"strings"
 )
-
-//go:embed example.yaml
-var starter []byte
 
 // Init writes the starter config (Alice, Bob, Carol, and the built-in
 // provider profiles) to path. An existing file is left alone unless force
@@ -27,7 +23,7 @@ func Init(path string, force bool) error {
 			return err
 		}
 	}
-	if err := os.WriteFile(path, starter, 0o644); err != nil {
+	if err := os.WriteFile(path, defaultYAML, 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", path, err)
 	}
 	return nil

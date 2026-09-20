@@ -40,8 +40,16 @@ The image is the static binary on scratch. Inside the container it listens on
 docker run --rm -p 127.0.0.1:4190:4190 ghcr.io/milon/bohurupee:v0.2.1
 ```
 
-If you mount a config file, set `bind: 0.0.0.0` in it. `bind: 127.0.0.1`
-listens on container loopback, which Docker cannot publish.
+Mount your config at `/bohurupee.yaml` (or pass `--config` /
+`BOHURUPEE_CONFIG`). The full YAML loads; a loopback `bind` in the file is
+upgraded to `0.0.0.0` so the published port works:
+
+```bash
+docker run --rm \
+  -p 127.0.0.1:4190:4190 \
+  -v "$PWD/bohurupee.yaml:/bohurupee.yaml:ro" \
+  ghcr.io/milon/bohurupee:v0.2.1
+```
 
 ```bash
 docker run --rm -v "$PWD:/work" -w /work ghcr.io/milon/bohurupee:v0.2.1 init

@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/milon/bohurupee/internal/oauth"
@@ -60,10 +61,17 @@ func TestLoadExampleYAML(t *testing.T) {
 	}
 }
 
-func TestOverlayKeepsDefaultPersonas(t *testing.T) {
+func TestOverlayKeepsDefaultProfiles(t *testing.T) {
 	t.Parallel()
 	cfg := Defaults()
-	if err := overlayYAML(&cfg, []byte("pkce: required\n")); err != nil {
+	raw := []byte(`
+pkce: required
+personas:
+  - id: alice
+    email: alice@example.com
+    name: Alice
+`)
+	if err := overlayYAML(&cfg, raw, true); err != nil {
 		t.Fatal(err)
 	}
 	if cfg.PKCE != oauth.PKCERequired {
@@ -72,8 +80,80 @@ func TestOverlayKeepsDefaultPersonas(t *testing.T) {
 	if len(cfg.Personas) != 1 || cfg.Personas[0].ID != "alice" {
 		t.Fatalf("personas = %+v", cfg.Personas)
 	}
+	fb, ok := cfg.Profiles["facebook"]
+	if !ok || fb.Endpoints["userinfo"] != "/me" {
+		t.Fatalf("default facebook profile = %+v ok=%v", fb, ok)
+	}
 	if cfg.BindFromFile {
 		t.Fatal("bind was not in the file")
+	}
+}
+
+func TestLoadRequiresPersonas(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "no-personas.yaml")
+	if err := os.WriteFile(path, []byte("pkce: required\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadPath(path); err == nil {
+		t.Fatal("expected error")
+	} else if !strings.Contains(err.Error(), "personas is required") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestSparseProviderProfileMerge(t *testing.T) {
+	t.Parallel()
+	cfg := Defaults()
+	if err := overlayYAML(&cfg, []byte(`
+personas:
+  - id: alice
+    email: alice@example.com
+    name: Alice
+providerProfiles:
+  apple:
+    protocol:
+      response_mode: query
+  facebook:
+    response:
+      custom: true
+`), true); err != nil {
+		t.Fatal(err)
+	}
+	apple := cfg.Profiles["apple"]
+	if apple.Template != "apple" {
+		t.Fatalf("apple template = %q", apple.Template)
+	}
+	if apple.Protocol.ResponseMode != "query" {
+		t.Fatalf("apple response_mode = %q", apple.Protocol.ResponseMode)
+	}
+	if !apple.Protocol.IDToken {
+		t.Fatal("apple id_token default should remain true")
+	}
+	fb := cfg.Profiles["facebook"]
+	if fb.Endpoints["userinfo"] != "/me" {
+		t.Fatalf("facebook endpoints = %#v", fb.Endpoints)
+	}
+	if fb.Response["custom"] != true {
+		t.Fatalf("facebook response = %#v", fb.Response)
+	}
+	if _, ok := cfg.Profiles["github"]; !ok {
+		t.Fatal("github default profile dropped")
+	}
+}
+
+func TestDefaultsMatchStarter(t *testing.T) {
+	t.Parallel()
+	cfg := Defaults()
+	if cfg.BindFromFile {
+		t.Fatal("defaults must not set BindFromFile")
+	}
+	if len(cfg.Personas) != 3 {
+		t.Fatalf("personas = %d", len(cfg.Personas))
+	}
+	apple := cfg.Profiles["apple"]
+	if apple.Protocol.ResponseMode != "form_post" || !apple.Protocol.IDToken {
+		t.Fatalf("apple = %+v", apple)
 	}
 }
 
@@ -83,7 +163,13 @@ func TestRefreshTokensYAML(t *testing.T) {
 	if cfg.RefreshTokens {
 		t.Fatal("default refreshTokens should be false")
 	}
-	if err := overlayYAML(&cfg, []byte("refreshTokens: true\n")); err != nil {
+	if err := overlayYAML(&cfg, []byte(`
+refreshTokens: true
+personas:
+  - id: alice
+    email: alice@example.com
+    name: Alice
+`), true); err != nil {
 		t.Fatal(err)
 	}
 	if !cfg.RefreshTokens {
@@ -100,7 +186,11 @@ clients:
   - id: strict-app
     redirect_uris:
       - http://127.0.0.1:3000/callback
-`)); err != nil {
+personas:
+  - id: alice
+    email: alice@example.com
+    name: Alice
+`), true); err != nil {
 		t.Fatal(err)
 	}
 	if cfg.OpenClient {
@@ -126,7 +216,13 @@ func TestLoadRejectsEmptyPersonas(t *testing.T) {
 func TestLoadPKCERequired(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "pkce.yaml")
-	if err := os.WriteFile(path, []byte("pkce: required\n"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(`
+pkce: required
+personas:
+  - id: alice
+    email: alice@example.com
+    name: Alice
+`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := LoadPath(path)

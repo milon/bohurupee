@@ -78,9 +78,20 @@ Publish that port on loopback only:
 docker run --rm -p 127.0.0.1:4190:4190 ghcr.io/milon/bohurupee:v0.2.1
 ```
 
-Do not map `0.0.0.0:4190` on a shared network. If you mount a config file,
-set `bind: 0.0.0.0` in it. `bind: 127.0.0.1` listens on container loopback,
-which Docker cannot publish. To write that file on the host:
+Mount your host config at `/bohurupee.yaml` (or pass `--config`). Personas,
+profiles, and the rest of the file load as usual. A `bind: 127.0.0.1` in that
+file is upgraded to `0.0.0.0` inside Docker so port publishing still works;
+override with an explicit `--bind` if you need something else:
+
+```bash
+docker run --rm \
+  -p 127.0.0.1:4190:4190 \
+  -v "$PWD/bohurupee.yaml:/bohurupee.yaml:ro" \
+  ghcr.io/milon/bohurupee:v0.2.1
+```
+
+Do not map `0.0.0.0:4190` on a shared network. To write a starter file on the
+host:
 
 ```bash
 docker run --rm -v "$PWD:/work" -w /work ghcr.io/milon/bohurupee:v0.2.1 init
@@ -206,9 +217,10 @@ bohurupee init
 ```
 
 That writes `bohurupee.yaml`. Edit it, then start the server. It reads the
-file on startup. You do not rebuild to change people. While the server is
-running, `POST /__reload` (loopback only) applies YAML changes without a
-restart:
+file on startup as a sparse overlay on the built-in defaults — omit any key
+you do not want to change, except `personas`, which is always required. You
+do not rebuild to change people. While the server is running,
+`POST /__reload` (loopback only) applies YAML changes without a restart:
 
 ```bash
 curl -s -X POST http://127.0.0.1:4190/__reload

@@ -1,6 +1,7 @@
 package config
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"strings"
@@ -10,6 +11,9 @@ import (
 	"github.com/milon/bohurupee/internal/profiles"
 	"gopkg.in/yaml.v3"
 )
+
+//go:embed example.yaml
+var defaultYAML []byte
 
 const DefaultPath = "bohurupee.yaml"
 
@@ -72,8 +76,10 @@ type Client struct {
 	RedirectURIs []string
 }
 
+// Defaults is the built-in config (same content as bohurupee init / example.yaml).
+// A user YAML file is a sparse overlay on top of this.
 func Defaults() Config {
-	return Config{
+	cfg := Config{
 		Port:       4190,
 		Bind:       "127.0.0.1",
 		PKCE:       oauth.PKCEOptional,
@@ -81,10 +87,18 @@ func Defaults() Config {
 		OpenClient: true,
 		Personas:   []oauth.Persona{oauth.Alice},
 	}
+	if err := overlayYAML(&cfg, defaultYAML, false); err != nil {
+		panic("config: embedded example.yaml: " + err.Error())
+	}
+	// The embed is not a user-provided file; listen overrides stay unset.
+	cfg.BindFromFile = false
+	return cfg
 }
 
-// LoadPath reads YAML from path. Empty path loads Defaults, then overlays
-// DefaultPath in the working directory when that file exists.
+// LoadPath reads YAML from path and overlays it on Defaults. Omitted keys keep
+// their default values, except personas, which must be set in every user file.
+// Empty path loads Defaults, then overlays DefaultPath in the working
+// directory when that file exists.
 func LoadPath(path string) (Config, error) {
 	cfg := Defaults()
 	if path == "" {
@@ -100,13 +114,13 @@ func LoadPath(path string) (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("read config %q: %w", path, err)
 	}
-	if err := overlayYAML(&cfg, raw); err != nil {
+	if err := overlayYAML(&cfg, raw, true); err != nil {
 		return Config{}, fmt.Errorf("config %q: %w", path, err)
 	}
 	return cfg, nil
 }
 
-func overlayYAML(cfg *Config, raw []byte) error {
+func overlayYAML(cfg *Config, raw []byte, requirePersonas bool) error {
 	var f File
 	if err := yaml.Unmarshal(raw, &f); err != nil {
 		return err
@@ -160,7 +174,11 @@ func overlayYAML(cfg *Config, raw []byte) error {
 		}
 		cfg.Clients = out
 	}
-	if f.Personas != nil {
+	if f.Personas == nil {
+		if requirePersonas {
+			return fmt.Errorf("personas is required")
+		}
+	} else {
 		if len(f.Personas) == 0 {
 			return fmt.Errorf("personas must not be empty")
 		}
@@ -175,32 +193,82 @@ func overlayYAML(cfg *Config, raw []byte) error {
 		cfg.Personas = ps
 	}
 	if f.Profiles != nil {
-		out := make(map[string]profiles.Profile, len(f.Profiles))
+		if cfg.Profiles == nil {
+			cfg.Profiles = make(map[string]profiles.Profile)
+		}
 		for name, fp := range f.Profiles {
-			p := profiles.Profile{
-				Template:  strings.TrimSpace(fp.ResponseTemplate),
-				Response:  fp.Response,
-				Endpoints: fp.Endpoints,
-				Protocol: profiles.Protocol{
-					ResponseMode: strings.TrimSpace(fp.Protocol.ResponseMode),
-				},
-			}
-			if fp.Protocol.IDToken != nil {
-				p.Protocol.IDToken = *fp.Protocol.IDToken
-			}
-			switch p.Protocol.ResponseMode {
+			key := strings.ToLower(strings.TrimSpace(name))
+			merged := mergeFileProfile(cfg.Profiles[key], fp)
+			switch merged.Protocol.ResponseMode {
 			case "", "query", "form_post":
 			default:
 				return fmt.Errorf("providerProfiles.%s: protocol.response_mode must be query or form_post", name)
 			}
-			out[name] = p
+			cfg.Profiles[key] = merged
 		}
-		if _, err := profiles.NewRegistry(out); err != nil {
+		if _, err := profiles.NewRegistry(cfg.Profiles); err != nil {
 			return err
 		}
-		cfg.Profiles = out
 	}
 	return nil
+}
+
+func mergeFileProfile(base profiles.Profile, fp fileProfile) profiles.Profile {
+	out := base
+	if t := strings.TrimSpace(fp.ResponseTemplate); t != "" {
+		out.Template = t
+	}
+	if fp.Response != nil {
+		out.Response = overlayAnyMap(out.Response, fp.Response)
+	}
+	if fp.Endpoints != nil {
+		if out.Endpoints == nil {
+			out.Endpoints = make(map[string]string, len(fp.Endpoints))
+		} else {
+			cp := make(map[string]string, len(out.Endpoints)+len(fp.Endpoints))
+			for k, v := range out.Endpoints {
+				cp[k] = v
+			}
+			out.Endpoints = cp
+		}
+		for k, v := range fp.Endpoints {
+			out.Endpoints[k] = v
+		}
+	}
+	if mode := strings.TrimSpace(fp.Protocol.ResponseMode); mode != "" {
+		out.Protocol.ResponseMode = mode
+	}
+	if fp.Protocol.IDToken != nil {
+		out.Protocol.IDToken = *fp.Protocol.IDToken
+	}
+	return out
+}
+
+func overlayAnyMap(base, over map[string]any) map[string]any {
+	if len(base) == 0 {
+		if over == nil {
+			return nil
+		}
+		out := make(map[string]any, len(over))
+		for k, v := range over {
+			out[k] = v
+		}
+		return out
+	}
+	out := make(map[string]any, len(base)+len(over))
+	for k, v := range base {
+		out[k] = v
+	}
+	for k, v := range over {
+		if bm, ok := out[k].(map[string]any); ok {
+			if om, ok := v.(map[string]any); ok {
+				out[k] = overlayAnyMap(bm, om)
+				continue
+			}
+		}
+		out[k] = v
+	}
+	return out
 }
 
 func (fp filePersona) toPersona() (oauth.Persona, error) {

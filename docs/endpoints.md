@@ -221,7 +221,8 @@ bohurupee init --force
 | Variable | Effect |
 |----------|--------|
 | `BOHURUPEE_AUTO_APPROVE` | Truthy (`1`, `true`, `yes`, `alice`) — every authorize auto-picks the default persona (unless `prompt=login` or `auto=` / deny) |
-| `BOHURUPEE_IN_DOCKER` | Set by the official image; allows `0.0.0.0` bind inside the container |
+| `BOHURUPEE_IN_DOCKER` | Set by the official image; allows `0.0.0.0` bind inside the container; upgrades loopback `bind` from YAML |
+| `BOHURUPEE_CONFIG` | Absolute/relative path to YAML when `--config` is omitted |
 
 ---
 

@@ -1,8 +1,11 @@
 # Configuration (`bohurupee.yaml`)
 
-Bohurupee loads YAML once at startup. With no `--config` flag it uses
-`./bohurupee.yaml` when that file exists; otherwise it runs with built-in
-defaults (Alice only, port `4190`, bind `127.0.0.1`).
+Bohurupee loads YAML once at startup as a **sparse overlay** on the built-in
+default config (same content as `bohurupee init` / `bohurupee.example.yaml`:
+Alice, Bob, Carol, and the stock provider profiles). Omitted keys keep their
+defaults, except **`personas`, which is required** in every config file.
+With no `--config` flag it uses `./bohurupee.yaml` when that file exists;
+otherwise it runs with those built-ins on port `4190`, bind `127.0.0.1`.
 
 ```bash
 bohurupee init                  # write ./bohurupee.yaml
@@ -113,16 +116,24 @@ Host interface to bind. Non-loopback addresses are refused unless you pass
 `--dangerously-bind-all-interfaces` (or run the Docker image, which binds
 `0.0.0.0` inside the container on purpose).
 
+In Docker, a loopback `bind` from the YAML (`127.0.0.1`, `localhost`, `::1`)
+is upgraded to `0.0.0.0` so `-p` publishing works. The rest of the config
+still loads. An explicit `--bind` always wins.
+
 ```yaml
 bind: 127.0.0.1
 ```
 
 ```yaml
-# only with --dangerously-bind-all-interfaces
+# only with --dangerously-bind-all-interfaces (outside Docker)
 bind: 0.0.0.0
 ```
 
 Equivalent flag: `--bind 127.0.0.1`.
+
+When `--config` is omitted, Bohurupee looks for `./bohurupee.yaml`. In Docker
+it also tries `/bohurupee.yaml` and `/config/bohurupee.yaml`, or
+`BOHURUPEE_CONFIG` if set.
 
 ---
 
@@ -257,12 +268,12 @@ Access tokens last 1 hour; refresh tokens last 24 hours (in memory).
 | | |
 |--|--|
 | **Type** | list of objects |
-| **Default** | single Alice persona |
+| **Default** | Alice, Bob, Carol when no config file is loaded |
 | **Reload** | yes |
 
-At least one persona is required if the key is present (empty list is an
-error). Each persona is a fake user you can pick on the consent page or
-select with `?auto=<id>`.
+**Required** in every config file. An omitted `personas` key is an error (the
+built-in list is not inherited). An empty list is also an error. Each persona
+is a fake user you can pick on the consent page or select with `?auto=<id>`.
 
 ### Persona fields
 
@@ -431,11 +442,13 @@ redirect. With `openClient: false`, unlisted `client_id` values are rejected.
 | | |
 |--|--|
 | **Type** | map keyed by provider slug |
-| **Default** | none (built-in template by slug, else `default`) |
+| **Default** | stock profiles from `bohurupee.example.yaml` (Apple `form_post`, Facebook `/me`, …) |
 | **Reload** | yes |
 
 Per-slug userinfo shape, extra routes, and protocol defaults. Key must be a
-valid provider slug (same rules as persona `id`).
+valid provider slug (same rules as persona `id`). Entries in your file
+**merge** into the stock profile for that slug; omitted slugs stay as
+defaults.
 
 See [Provider profiles](provider-profiles.md) for merge order and the full
 template table. Summary of profile fields:
@@ -512,15 +525,17 @@ The client can still pass `response_mode=query` explicitly.
 
 ## Minimal configs
 
-No file — Alice on `127.0.0.1:4190`:
+No file — built-in Alice / Bob / Carol on `127.0.0.1:4190`:
 
 ```bash
 bohurupee
 ```
 
-Personas only (other keys keep defaults):
+A config file must include `personas`. Other keys stay at the defaults:
 
 ```yaml
+pkce: required
+port: 5190
 personas:
   - id: alice
     email: alice@example.com
@@ -529,6 +544,19 @@ personas:
     email: bob@example.com
     name: Bob
     email_verified: false
+```
+
+Partial provider profile (merges into the stock entry):
+
+```yaml
+personas:
+  - id: alice
+    email: alice@example.com
+    name: Alice
+providerProfiles:
+  apple:
+    protocol:
+      response_mode: query
 ```
 
 Strict local app:

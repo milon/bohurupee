@@ -65,7 +65,7 @@ func TestStarterMatchesExample(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(bytes.TrimSpace(root), bytes.TrimSpace(starter)) {
+	if !bytes.Equal(bytes.TrimSpace(root), bytes.TrimSpace(defaultYAML)) {
 		t.Fatal("internal/config/example.yaml and bohurupee.example.yaml differ")
 	}
 }

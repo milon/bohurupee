@@ -38,7 +38,7 @@ func run(args []string) error {
 	inDocker := envTruthy("BOHURUPEE_IN_DOCKER")
 	defaultBind, dockerAllowsNonLoopback := bindDefaults(inDocker)
 
-	configPath := fs.String("config", "", "YAML config path (default: ./bohurupee.yaml if present)")
+	configPath := fs.String("config", "", "YAML config path (default: ./bohurupee.yaml if present; in Docker also /bohurupee.yaml)")
 	bind := fs.String("bind", defaultBind, "address to bind (loopback only by default)")
 	port := fs.Int("port", 4190, "TCP port")
 	danger := fs.Bool("dangerously-bind-all-interfaces", false, "allow binding a non-loopback address")
@@ -52,15 +52,14 @@ func run(args []string) error {
 		return nil
 	}
 
-	cfg, err := config.LoadPath(*configPath)
+	resolvedConfig := strings.TrimSpace(*configPath)
+	if resolvedConfig == "" {
+		resolvedConfig = discoverConfigPath(inDocker)
+	}
+
+	cfg, err := config.LoadPath(resolvedConfig)
 	if err != nil {
 		return err
-	}
-	resolvedConfig := *configPath
-	if resolvedConfig == "" {
-		if _, err := os.Stat(config.DefaultPath); err == nil {
-			resolvedConfig = config.DefaultPath
-		}
 	}
 
 	host := cfg.Bind
@@ -89,6 +88,9 @@ func run(args []string) error {
 	}
 	if inDocker {
 		log.Printf("WARNING: running in Docker (DEV ONLY); listening on %s. Publish the host port on 127.0.0.1, for example -p 127.0.0.1:%d:%d", addr.String(), addr.Port, addr.Port)
+		if resolvedConfig != "" {
+			log.Printf("loaded config %s", resolvedConfig)
+		}
 	}
 
 	signer, err := oidc.LoadOrCreate(oidc.DefaultKeyPath())
@@ -118,22 +120,61 @@ func run(args []string) error {
 }
 
 // resolveHost picks the listen host.
-// An explicit --bind wins. A bind key in the config file wins next.
-// Inside the container image, the built-in default becomes 0.0.0.0 so
-// Docker can publish the port. Otherwise the default stays loopback.
+// An explicit --bind wins. Outside Docker, a bind key in the config file wins
+// next. Inside Docker, a loopback bind from the file is treated as the usual
+// local default and upgraded to 0.0.0.0 so port publishing works while the
+// rest of the YAML (personas, profiles, …) still loads. Non-loopback binds
+// from the file are kept. With no file bind, Docker defaults to 0.0.0.0.
 func resolveHost(host string, bindFromFile, bindFromFlag, inDocker bool) string {
-	if bindFromFlag || bindFromFile {
+	if bindFromFlag {
 		if host != "" {
 			return host
 		}
 	}
 	if inDocker {
+		if bindFromFile && host != "" && !isLoopbackBind(host) {
+			return host
+		}
 		return "0.0.0.0"
+	}
+	if bindFromFile && host != "" {
+		return host
 	}
 	if host == "" {
 		return "127.0.0.1"
 	}
 	return host
+}
+
+func isLoopbackBind(host string) bool {
+	host = strings.TrimSpace(strings.Trim(host, "[]"))
+	if host == "" {
+		return false
+	}
+	switch strings.ToLower(host) {
+	case "localhost", "127.0.0.1", "::1":
+		return true
+	}
+	return false
+}
+
+// discoverConfigPath finds a YAML file when --config is omitted.
+// Prefer BOHURUPEE_CONFIG, then Docker-friendly absolute paths, then
+// ./bohurupee.yaml in the working directory.
+func discoverConfigPath(inDocker bool) string {
+	if path := strings.TrimSpace(os.Getenv("BOHURUPEE_CONFIG")); path != "" {
+		return path
+	}
+	candidates := []string{config.DefaultPath}
+	if inDocker {
+		candidates = []string{"/bohurupee.yaml", "/config/bohurupee.yaml", config.DefaultPath}
+	}
+	for _, path := range candidates {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	return ""
 }
 
 func runInit(args []string) error {
