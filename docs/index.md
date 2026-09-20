@@ -1,4 +1,4 @@
-# Bohurupee
+# Bohurupee (বহুরূপী)
 
 <p class="hero-lede">Local fake identity provider for social login development. Point any OAuth or OIDC client at <code>http://127.0.0.1:4190</code> — nothing leaves your machine.</p>
 
@@ -17,16 +17,16 @@ code flow in your app.
 
 ## Documentation
 
-| Guide | Contents |
-|-------|----------|
-| [Get started](get-started.md) | Install (Homebrew, binary, Docker, source), first login |
-| [Configuration](configuration.md) | Every `bohurupee.yaml` key with examples |
-| [Endpoints and CLI](endpoints.md) | Routes, query params, flags, env vars |
-| [Any framework](any-framework.md) | OIDC, Auth.js, CORS, reload, refresh |
-| [Provider profiles](provider-profiles.md) | Templates, merge order, Apple / Facebook protocol |
-| [Laravel Socialite](socialite.md) | Optional Packagist adapter |
-| [Security](security.md) | Threat model and reporting |
-| [Contributing](contributing.md) | Develop, templates, docs, release |
+| Guide                                     | Contents                                                |
+|-------------------------------------------|---------------------------------------------------------|
+| [Get started](get-started.md)             | Install (Homebrew, binary, Docker, source), first login |
+| [Configuration](configuration.md)         | Every `bohurupee.yaml` key with examples                |
+| [Endpoints and CLI](endpoints.md)         | Routes, query params, flags, env vars                   |
+| [Any framework](any-framework.md)         | OIDC, Auth.js, CORS, reload, refresh                    |
+| [Provider profiles](provider-profiles.md) | Templates, merge order, Apple / Facebook protocol       |
+| [Laravel Socialite](socialite.md)         | Optional Packagist adapter                              |
+| [Security](security.md)                   | Threat model and reporting                              |
+| [Contributing](contributing.md)           | Develop, templates, docs, release                       |
 
 ## What it is
 
