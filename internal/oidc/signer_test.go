@@ -85,6 +85,45 @@ func TestIDTokenIncludesPersonaClaims(t *testing.T) {
 	}
 }
 
+func TestIDTokenGivenFamilyAndAtHash(t *testing.T) {
+	t.Parallel()
+	s, err := Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	access := "access-token-value-for-hash"
+	raw, err := s.IDToken(IDTokenInput{
+		Issuer:      "http://127.0.0.1:4190/google",
+		Audience:    "dev-client",
+		Now:         time.Now(),
+		TTL:         time.Hour,
+		Provider:    "google",
+		Persona:     oauth.Alice,
+		AccessToken: access,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tok, err := jwt.ParseInsecure([]byte(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var given, family, atHash string
+	if err := tok.Get("given_name", &given); err != nil || given != "Alice" {
+		t.Fatalf("given_name = %q err=%v", given, err)
+	}
+	if err := tok.Get("family_name", &family); err != nil || family != "Admin" {
+		t.Fatalf("family_name = %q err=%v", family, err)
+	}
+	if err := tok.Get("at_hash", &atHash); err != nil || atHash == "" {
+		t.Fatalf("at_hash missing: %v", err)
+	}
+	want := accessTokenHash(access)
+	if atHash != want {
+		t.Fatalf("at_hash = %q want %q", atHash, want)
+	}
+}
+
 func TestLoadOrCreatePersists(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

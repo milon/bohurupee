@@ -38,6 +38,11 @@ func (s *Server) handleDiscovery(w http.ResponseWriter, r *http.Request) {
 		"code_challenge_methods_supported":      []string{"S256", "plain"},
 		"token_endpoint_auth_methods_supported": []string{"client_secret_basic", "client_secret_post", "none"},
 		"grant_types_supported":                 grants,
+		"claims_supported": []string{
+			"sub", "iss", "aud", "exp", "iat", "nonce", "at_hash",
+			"email", "email_verified", "name", "given_name", "family_name",
+			"nickname", "picture",
+		},
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")

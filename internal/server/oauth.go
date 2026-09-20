@@ -30,6 +30,8 @@ type authRequest struct {
 	Auto                string
 	Scope               string
 	Nonce               string
+	Prompt              string
+	LoginHint           string
 	Deny                bool
 }
 
@@ -58,6 +60,10 @@ func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 		s.writeAuthorizeError(w, req, err)
 		return
 	}
+	if err := s.checkClientRedirect(req.ClientID, req.RedirectURI); err != nil {
+		s.writeAuthorizeError(w, req, authError{Code: "invalid_request", Desc: err.Error()})
+		return
+	}
 	s.applyProfileDefaults(&req, reg)
 
 	if req.Deny {
@@ -65,7 +71,7 @@ func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	persona, err := s.resolvePersona(r, req.Auto, catalog)
+	persona, err := s.resolvePersona(r, req, catalog)
 	if err != nil {
 		s.writeAuthorizeError(w, req, err)
 		return
@@ -119,6 +125,8 @@ func parseAuthRequest(r *http.Request, pkce oauth.PKCEMode) (authRequest, error)
 		Auto:                strings.TrimSpace(q.Get("auto")),
 		Scope:               strings.TrimSpace(q.Get("scope")),
 		Nonce:               q.Get("nonce"),
+		Prompt:              strings.TrimSpace(q.Get("prompt")),
+		LoginHint:           strings.TrimSpace(q.Get("login_hint")),
 		Deny:                truthy(q.Get("deny")),
 	}
 	if req.ClientID == "" {
@@ -159,13 +167,16 @@ func (s *Server) applyProfileDefaults(req *authRequest, reg *profiles.Registry) 
 	}
 }
 
-func (s *Server) resolvePersona(r *http.Request, auto string, catalog *oauth.Catalog) (*oauth.Persona, error) {
-	if auto != "" {
-		p, ok := catalog.Lookup(auto)
+func (s *Server) resolvePersona(r *http.Request, req authRequest, catalog *oauth.Catalog) (*oauth.Persona, error) {
+	if req.Auto != "" {
+		p, ok := catalog.Lookup(req.Auto)
 		if !ok {
-			return nil, authError{Redirect: true, Code: "invalid_request", Desc: fmt.Sprintf("unknown persona %q", auto)}
+			return nil, authError{Redirect: true, Code: "invalid_request", Desc: fmt.Sprintf("unknown persona %q", req.Auto)}
 		}
 		return &p, nil
+	}
+	if promptHasLogin(req.Prompt) {
+		return nil, nil
 	}
 	if s.autoApprove {
 		p := catalog.Default()
@@ -186,9 +197,15 @@ func (s *Server) resolvePersona(r *http.Request, auto string, catalog *oauth.Cat
 
 func (s *Server) renderConsent(w http.ResponseWriter, r *http.Request, req authRequest, catalog *oauth.Catalog) {
 	last := ""
-	if c, err := r.Cookie(personaCookie); err == nil {
-		if _, ok := catalog.Lookup(c.Value); ok {
-			last = c.Value
+	if hint := strings.TrimSpace(req.LoginHint); hint != "" {
+		if _, ok := catalog.Lookup(hint); ok {
+			last = hint
+		}
+	} else if !promptHasLogin(req.Prompt) {
+		if c, err := r.Cookie(personaCookie); err == nil {
+			if _, ok := catalog.Lookup(c.Value); ok {
+				last = c.Value
+			}
 		}
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -201,6 +218,34 @@ func (s *Server) renderConsent(w http.ResponseWriter, r *http.Request, req authR
 	}); err != nil {
 		http.Error(w, "template error", http.StatusInternalServerError)
 	}
+}
+
+func promptHasLogin(prompt string) bool {
+	for _, p := range strings.Fields(strings.ToLower(prompt)) {
+		if p == "login" || p == "select_account" {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Server) checkClientRedirect(clientID, redirectURI string) error {
+	open, clients := s.clientPolicy()
+	if c, ok := clients[clientID]; ok && len(c.RedirectURIs) > 0 {
+		for _, u := range c.RedirectURIs {
+			if u == redirectURI {
+				return nil
+			}
+		}
+		return fmt.Errorf("redirect_uri is not registered for this client")
+	}
+	if open {
+		return nil
+	}
+	if _, ok := clients[clientID]; ok {
+		return nil
+	}
+	return fmt.Errorf("unknown client_id")
 }
 
 func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
@@ -295,13 +340,14 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		idt, err := s.signer.IDToken(oidc.IDTokenInput{
-			Issuer:   s.issuer(provider),
-			Audience: ex.ClientID,
-			Nonce:    ex.Nonce,
-			Now:      s.now(),
-			TTL:      s.tokenTTL,
-			Provider: provider,
-			Persona:  persona,
+			Issuer:      s.issuer(provider),
+			Audience:    ex.ClientID,
+			Nonce:       ex.Nonce,
+			Now:         s.now(),
+			TTL:         s.tokenTTL,
+			Provider:    provider,
+			Persona:     persona,
+			AccessToken: ex.Access,
 		})
 		if err != nil {
 			writeTokenError(w, http.StatusInternalServerError, "server_error", "could not issue id_token")

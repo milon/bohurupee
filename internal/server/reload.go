@@ -10,9 +10,9 @@ import (
 	"github.com/milon/bohurupee/internal/profiles"
 )
 
-// ApplyConfig swaps personas, PKCE, idToken mode, profiles, and refresh-token
-// mode. Listen address and signing keys are unchanged. Invalid config leaves
-// the previous values in place.
+// ApplyConfig swaps personas, PKCE, idToken mode, profiles, clients, and
+// refresh-token mode. Listen address and signing keys are unchanged. Invalid
+// config leaves the previous values in place.
 func (s *Server) ApplyConfig(cfg config.Config) error {
 	personas := cfg.Personas
 	if len(personas) == 0 {
@@ -42,6 +42,8 @@ func (s *Server) ApplyConfig(cfg config.Config) error {
 	s.idToken = idToken
 	s.profiles = reg
 	s.refreshTokens = cfg.RefreshTokens
+	s.openClient = cfg.OpenClient
+	s.clients = cfg.Clients
 	s.store.SetRefreshEnabled(cfg.RefreshTokens)
 	return nil
 }
@@ -91,4 +93,10 @@ func (s *Server) snapshot() (catalog *oauth.Catalog, pkce oauth.PKCEMode, idToke
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.catalog, s.pkce, s.idToken, s.profiles, s.refreshTokens
+}
+
+func (s *Server) clientPolicy() (open bool, clients map[string]config.Client) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.openClient, s.clients
 }

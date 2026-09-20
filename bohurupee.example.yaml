@@ -4,6 +4,10 @@ pkce: optional
 idToken: openid
 openClient: true
 # refreshTokens: true   # opt-in; off by default
+# clients:              # optional allowlists; openClient stays the default
+#   - id: my-app
+#     redirect_uris:
+#       - http://127.0.0.1:3000/api/auth/callback/bohurupee
 
 personas:
   - id: alice

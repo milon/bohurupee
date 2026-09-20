@@ -106,6 +106,8 @@ func run(args []string) error {
 		Profiles:      cfg.Profiles,
 		ConfigPath:    resolvedConfig,
 		RefreshTokens: cfg.RefreshTokens,
+		OpenClient:    &cfg.OpenClient,
+		Clients:       cfg.Clients,
 	})
 	if err != nil {
 		return err

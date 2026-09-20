@@ -21,7 +21,13 @@ type File struct {
 	OpenClient    *bool                  `yaml:"openClient"`
 	RefreshTokens *bool                  `yaml:"refreshTokens"`
 	Personas      []filePersona          `yaml:"personas"`
+	Clients       []fileClient           `yaml:"clients"`
 	Profiles      map[string]fileProfile `yaml:"providerProfiles"`
+}
+
+type fileClient struct {
+	ID           string   `yaml:"id"`
+	RedirectURIs []string `yaml:"redirect_uris"`
 }
 
 type fileProfile struct {
@@ -56,7 +62,14 @@ type Config struct {
 	OpenClient    bool
 	RefreshTokens bool
 	Personas      []oauth.Persona
+	Clients       map[string]Client
 	Profiles      map[string]profiles.Profile
+}
+
+// Client is an optional registered OAuth client with an allowlisted redirect set.
+type Client struct {
+	ID           string
+	RedirectURIs []string
 }
 
 func Defaults() Config {
@@ -124,6 +137,28 @@ func overlayYAML(cfg *Config, raw []byte) error {
 	}
 	if f.RefreshTokens != nil {
 		cfg.RefreshTokens = *f.RefreshTokens
+	}
+	if f.Clients != nil {
+		out := make(map[string]Client, len(f.Clients))
+		for i, fc := range f.Clients {
+			id := strings.TrimSpace(fc.ID)
+			if id == "" {
+				return fmt.Errorf("clients[%d]: id is required", i)
+			}
+			if _, dup := out[id]; dup {
+				return fmt.Errorf("clients: duplicate id %q", id)
+			}
+			uris := make([]string, 0, len(fc.RedirectURIs))
+			for _, raw := range fc.RedirectURIs {
+				u := strings.TrimSpace(raw)
+				if u == "" {
+					continue
+				}
+				uris = append(uris, u)
+			}
+			out[id] = Client{ID: id, RedirectURIs: uris}
+		}
+		cfg.Clients = out
 	}
 	if f.Personas != nil {
 		if len(f.Personas) == 0 {

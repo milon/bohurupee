@@ -39,7 +39,7 @@ func githubTemplate(_ string, p oauth.Persona) map[string]any {
 }
 
 func googleTemplate(_ string, p oauth.Persona) map[string]any {
-	given, family := splitName(p.Name)
+	given, family := oauth.SplitName(p.Name)
 	return map[string]any{
 		"picture":        p.Avatar,
 		"given_name":     given,
@@ -77,7 +77,7 @@ func appleTemplate(_ string, p oauth.Persona) map[string]any {
 // defaultTemplate covers Socialite drivers that have no built-in shape.
 // The keys are the aliases those drivers read (login, username, picture, …).
 func defaultTemplate(_ string, p oauth.Persona) map[string]any {
-	given, family := splitName(p.Name)
+	given, family := oauth.SplitName(p.Name)
 	return map[string]any{
 		"login":              p.Nickname,
 		"username":           p.Nickname,
@@ -92,7 +92,7 @@ func defaultTemplate(_ string, p oauth.Persona) map[string]any {
 }
 
 func jumpcloudTemplate(_ string, p oauth.Persona) map[string]any {
-	given, family := splitName(p.Name)
+	given, family := oauth.SplitName(p.Name)
 	return map[string]any{
 		"preferred_username": p.Nickname,
 		"given_name":         given,
@@ -140,7 +140,7 @@ func slackTemplate(_ string, p oauth.Persona) map[string]any {
 }
 
 func linkedinTemplate(_ string, p oauth.Persona) map[string]any {
-	given, family := splitName(p.Name)
+	given, family := oauth.SplitName(p.Name)
 	return map[string]any{
 		"given_name":  given,
 		"family_name": family,
@@ -157,24 +157,12 @@ func discordTemplate(_ string, p oauth.Persona) map[string]any {
 }
 
 func microsoftTemplate(_ string, p oauth.Persona) map[string]any {
-	given, family := splitName(p.Name)
+	given, family := oauth.SplitName(p.Name)
 	return map[string]any{
 		"displayName":       p.Name,
 		"givenName":         given,
 		"surname":           family,
 		"mail":              p.Email,
 		"userPrincipalName": p.Email,
-	}
-}
-
-func splitName(name string) (given, family string) {
-	parts := strings.Fields(name)
-	switch len(parts) {
-	case 0:
-		return "", ""
-	case 1:
-		return parts[0], ""
-	default:
-		return parts[0], strings.Join(parts[1:], " ")
 	}
 }

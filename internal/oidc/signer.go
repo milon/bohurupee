@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -160,13 +161,14 @@ func (s *Signer) JWKS() ([]byte, error) {
 }
 
 type IDTokenInput struct {
-	Issuer   string
-	Audience string
-	Nonce    string
-	Now      time.Time
-	TTL      time.Duration
-	Provider string
-	Persona  oauth.Persona
+	Issuer      string
+	Audience    string
+	Nonce       string
+	Now         time.Time
+	TTL         time.Duration
+	Provider    string
+	Persona     oauth.Persona
+	AccessToken string
 }
 
 func (s *Signer) IDToken(in IDTokenInput) (string, error) {
@@ -175,6 +177,7 @@ func (s *Signer) IDToken(in IDTokenInput) (string, error) {
 	}
 	tok := jwt.New()
 	sub := oauth.StableID(in.Provider, in.Persona.ID)
+	given, family := oauth.SplitName(in.Persona.Name)
 	for _, kv := range []struct {
 		k string
 		v any
@@ -187,6 +190,8 @@ func (s *Signer) IDToken(in IDTokenInput) (string, error) {
 		{"email", in.Persona.Email},
 		{"email_verified", in.Persona.EmailVerified},
 		{"name", in.Persona.Name},
+		{"given_name", given},
+		{"family_name", family},
 		{"nickname", in.Persona.Nickname},
 		{"picture", in.Persona.Avatar},
 	} {
@@ -196,6 +201,11 @@ func (s *Signer) IDToken(in IDTokenInput) (string, error) {
 	}
 	if in.Nonce != "" {
 		if err := tok.Set("nonce", in.Nonce); err != nil {
+			return "", err
+		}
+	}
+	if in.AccessToken != "" {
+		if err := tok.Set("at_hash", accessTokenHash(in.AccessToken)); err != nil {
 			return "", err
 		}
 	}
@@ -214,9 +224,14 @@ func (s *Signer) IDToken(in IDTokenInput) (string, error) {
 	return string(signed), nil
 }
 
+func accessTokenHash(accessToken string) string {
+	sum := sha256.Sum256([]byte(accessToken))
+	return base64.RawURLEncoding.EncodeToString(sum[:len(sum)/2])
+}
+
 func reservedIDTokenClaim(k string) bool {
 	switch strings.ToLower(strings.TrimSpace(k)) {
-	case "iss", "sub", "aud", "exp", "iat", "nbf", "jti", "nonce":
+	case "iss", "sub", "aud", "exp", "iat", "nbf", "jti", "nonce", "at_hash":
 		return true
 	default:
 		return false

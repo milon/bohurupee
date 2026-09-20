@@ -181,10 +181,11 @@ With no provider profile, userinfo is the same shape for every slug:
 ```
 
 `id` and `sub` are `{provider}:{persona}`. Request `scope` containing
-`openid` and the token response also includes an RS256 `id_token`. Verify it
-against `/{provider}/jwks` (alias `/{provider}/auth/keys`). The signing key
-is stored under your user config directory (`…/bohurupee/oidc.key`) so it
-survives restarts.
+`openid` and the token response also includes an RS256 `id_token` with
+`given_name` / `family_name` (from the persona name) and `at_hash` for the
+access token. Verify it against `/{provider}/jwks` (alias
+`/{provider}/auth/keys`). The signing key is stored under your user config
+directory (`…/bohurupee/oidc.key`) so it survives restarts.
 
 ### Personas and config
 
@@ -246,6 +247,15 @@ Refresh tokens are **off by default**. With `refreshTokens: true`, code
 exchange includes `refresh_token`, discovery lists `refresh_token` as a
 supported grant, and `grant_type=refresh_token` issues a new access token.
 Default token JSON stays unchanged when the flag is omitted or false.
+
+Authorize accepts OIDC `prompt=login` (always show consent; ignores the
+last-persona and `loginAs` cookies) and `login_hint=<persona>` (pre-selects
+that persona on the consent page). `?auto=` still skips consent for tests.
+
+Optional `clients` entries pin `redirect_uris` per `client_id`. A configured
+client rejects surprise callbacks. Unlisted clients still work when
+`openClient: true` (the default). Set `openClient: false` to require every
+`client_id` to appear under `clients`.
 
 ### Provider-shaped userinfo
 
@@ -319,7 +329,7 @@ is the same override inside the container.
 
 | Method       | Path                                           | Notes                                                                                                                                                                                                                    |
 |--------------|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `GET`        | `/{provider}/authorize`                        | `client_id`, `redirect_uri`, `response_type=code`, `state`. Consent, `?auto=<persona>`, or `?deny=1`. Failed requests with a valid `redirect_uri` return `?error=` (RFC 6749). `form_post` auto-posts `code` or `error`. |
+| `GET`        | `/{provider}/authorize`                        | `client_id`, `redirect_uri`, `response_type=code`, `state`. Consent, `?auto=<persona>`, or `?deny=1`. `prompt=login` forces consent; `login_hint` pre-selects a persona. Optional per-client `redirect_uris`. Failed requests with a valid `redirect_uri` return `?error=` (RFC 6749). `form_post` auto-posts `code` or `error`. |
 | `POST`       | `/{provider}/token`                            | Form body and/or HTTP Basic. `grant_type=authorization_code` (and `refresh_token` when enabled). Errors are `{"error":"invalid_grant"}` (and friends). Send `code_verifier` when a PKCE challenge was used. CORS for loopback origins. |
 | `GET`        | `/{provider}/userinfo`                         | `Authorization: Bearer …`. CORS for loopback origins.                                                                                                                                                                    |
 | `GET`        | `/{provider}/.well-known/openid-configuration` | Issuer, authorize, token, userinfo, jwks. CORS for loopback origins.                                                                                                                                                     |

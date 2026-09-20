@@ -91,6 +91,27 @@ func TestRefreshTokensYAML(t *testing.T) {
 	}
 }
 
+func TestClientsYAML(t *testing.T) {
+	t.Parallel()
+	cfg := Defaults()
+	if err := overlayYAML(&cfg, []byte(`
+openClient: false
+clients:
+  - id: strict-app
+    redirect_uris:
+      - http://127.0.0.1:3000/callback
+`)); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.OpenClient {
+		t.Fatal("openClient should be false")
+	}
+	c, ok := cfg.Clients["strict-app"]
+	if !ok || len(c.RedirectURIs) != 1 || c.RedirectURIs[0] != "http://127.0.0.1:3000/callback" {
+		t.Fatalf("client = %+v ok=%v", c, ok)
+	}
+}
+
 func TestLoadRejectsEmptyPersonas(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "empty.yaml")

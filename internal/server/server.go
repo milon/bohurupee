@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/milon/bohurupee/assets"
+	"github.com/milon/bohurupee/internal/config"
 	"github.com/milon/bohurupee/internal/listen"
 	"github.com/milon/bohurupee/internal/oauth"
 	"github.com/milon/bohurupee/internal/oidc"
@@ -28,6 +29,9 @@ type Options struct {
 	Profiles      map[string]profiles.Profile
 	ConfigPath    string
 	RefreshTokens bool
+	// OpenClient defaults to true when nil (zero Options in tests).
+	OpenClient *bool
+	Clients    map[string]config.Client
 }
 
 type Server struct {
@@ -46,6 +50,8 @@ type Server struct {
 	profiles      *profiles.Registry
 	configPath    string
 	refreshTokens bool
+	openClient    bool
+	clients       map[string]config.Client
 }
 
 func New(addr listen.Addr) (*Server, error) {
@@ -91,6 +97,10 @@ func NewWithOptions(opts Options) (*Server, error) {
 	}
 	store := oauth.NewStore(opts.Clock, opts.CodeTTL, tokenTTL)
 	store.SetRefreshEnabled(opts.RefreshTokens)
+	openClient := true
+	if opts.OpenClient != nil {
+		openClient = *opts.OpenClient
+	}
 	s := &Server{
 		Addr:          opts.Addr,
 		mux:           http.NewServeMux(),
@@ -106,6 +116,8 @@ func NewWithOptions(opts Options) (*Server, error) {
 		profiles:      reg,
 		configPath:    opts.ConfigPath,
 		refreshTokens: opts.RefreshTokens,
+		openClient:    openClient,
+		clients:       opts.Clients,
 	}
 	s.mux.HandleFunc("GET /{$}", s.handleHome)
 	s.mux.HandleFunc("GET /favicon.svg", s.handleFavicon)
