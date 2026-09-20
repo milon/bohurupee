@@ -31,7 +31,7 @@ func run(args []string) error {
 	fs := flag.NewFlagSet("bohurupee", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "Usage: bohurupee [flags]\n       bohurupee init [--config path] [--force]\n\n")
+		_, _ = fmt.Fprintf(fs.Output(), "Usage: bohurupee [flags]\n       bohurupee init [--config path] [--force]\n\n")
 		fs.PrintDefaults()
 	}
 

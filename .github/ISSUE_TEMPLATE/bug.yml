@@ -1,0 +1,43 @@
+name: Bug report
+description: Something in the Bohurupee binary or docs does not work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bohurupee is **DEV ONLY**. Confirm you are on loopback before filing.
+        Sensitive findings → [Security Advisories](https://github.com/milon/bohurupee/security/advisories/new).
+  - type: input
+    id: version
+    attributes:
+      label: Bohurupee version
+      description: Output of `bohurupee --version` (or commit SHA if building from source).
+      placeholder: v0.5.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: macOS 15 / Ubuntu 24.04 / …
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Expected vs actual behavior. Include authorize/token/userinfo steps if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Config snippet
+      description: Redact secrets. Personas and provider profiles help.
+      render: yaml
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / response bodies
+      description: Paste relevant stdout, `Location` headers, or JSON errors.
+      render: text

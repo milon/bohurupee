@@ -227,7 +227,7 @@ func TestFormPostHitsRedirectReceiver(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if posted.Get("code") == "" || posted.Get("state") != "state-xyz" {
 		t.Fatalf("receiver posted = %v html = %s", posted, html)
 	}

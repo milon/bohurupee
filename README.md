@@ -2,6 +2,8 @@
 
 # Bohurupee (বহুরূপী)
 
+[![CI](https://github.com/milon/bohurupee/actions/workflows/ci.yml/badge.svg)](https://github.com/milon/bohurupee/actions/workflows/ci.yml)
+
 Local fake identity provider for social login development.
 
 Run it on your machine and point any OAuth or OpenID Connect client at
@@ -11,7 +13,8 @@ Apple, or a provider you invent. Nothing leaves localhost.
 Laravel Socialite is an optional adapter (`milon/bohurupee-laravel`). You do
 not need it, or Go, to use the server.
 
-**DEV ONLY.** v0.1 listens on loopback unless you override that on purpose.
+**DEV ONLY.** Listens on loopback unless you override that on purpose. See
+[SECURITY.md](SECURITY.md).
 
 ## Install
 
@@ -31,21 +34,25 @@ macOS and Linux are both in the cask.
 
 ### Release binary
 
-[v0.1](https://github.com/milon/bohurupee/releases/tag/v0.1) ships
-`bohurupee`, `bohurupee.example.yaml`, and `checksums.txt`.
+[Latest release](https://github.com/milon/bohurupee/releases/latest) ships
+`bohurupee`, `bohurupee.example.yaml`, and `checksums.txt`. Current line:
+[v0.2.1](https://github.com/milon/bohurupee/releases/tag/v0.2.1) (Homebrew
+cask tracks the tag automatically). The next cut is **v0.5.0** — see
+[CHANGELOG.md](CHANGELOG.md).
 
-| OS      | Architecture  | File                                |
-|---------|---------------|-------------------------------------|
-| macOS   | Apple silicon | `bohurupee_0.1_darwin_arm64.tar.gz` |
-| macOS   | Intel         | `bohurupee_0.1_darwin_amd64.tar.gz` |
-| Linux   | x86_64        | `bohurupee_0.1_linux_amd64.tar.gz`  |
-| Linux   | arm64         | `bohurupee_0.1_linux_arm64.tar.gz`  |
-| Windows | x86_64        | `bohurupee_0.1_windows_amd64.zip`   |
+| OS      | Architecture  | File                                    |
+|---------|---------------|-----------------------------------------|
+| macOS   | Apple silicon | `bohurupee_<version>_darwin_arm64.tar.gz` |
+| macOS   | Intel         | `bohurupee_<version>_darwin_amd64.tar.gz` |
+| Linux   | x86_64        | `bohurupee_<version>_linux_amd64.tar.gz`  |
+| Linux   | arm64         | `bohurupee_<version>_linux_arm64.tar.gz`  |
+| Windows | x86_64        | `bohurupee_<version>_windows_amd64.zip`   |
 
 ```bash
-# example: macOS Apple silicon. Check checksums.txt from the same release first.
+# example: macOS Apple silicon. Replace VERSION (e.g. 0.2.1). Check checksums.txt first.
+VERSION=0.2.1
 curl -fsSL -o bohurupee.tar.gz \
-  https://github.com/milon/bohurupee/releases/download/v0.1/bohurupee_0.1_darwin_arm64.tar.gz
+  "https://github.com/milon/bohurupee/releases/download/v${VERSION}/bohurupee_${VERSION}_darwin_arm64.tar.gz"
 tar -xzf bohurupee.tar.gz
 ./bohurupee init
 ./bohurupee
@@ -66,7 +73,7 @@ container the process listens on `0.0.0.0` so Docker can publish the port.
 Publish that port on loopback only:
 
 ```bash
-docker run --rm -p 127.0.0.1:4190:4190 ghcr.io/milon/bohurupee:v0.1
+docker run --rm -p 127.0.0.1:4190:4190 ghcr.io/milon/bohurupee:v0.2.1
 ```
 
 Do not map `0.0.0.0:4190` on a shared network. If you mount a config file,
@@ -74,7 +81,7 @@ set `bind: 0.0.0.0` in it. `bind: 127.0.0.1` listens on container loopback,
 which Docker cannot publish. To write that file on the host:
 
 ```bash
-docker run --rm -v "$PWD:/work" -w /work ghcr.io/milon/bohurupee:v0.1 init
+docker run --rm -v "$PWD:/work" -w /work ghcr.io/milon/bohurupee:v0.2.1 init
 ```
 
 ### From source

@@ -24,7 +24,7 @@ func TestHomePage(t *testing.T) {
 	srv.Handler().ServeHTTP(rec, req)
 
 	res := rec.Result()
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +72,7 @@ func TestFavicon(t *testing.T) {
 	srv.Handler().ServeHTTP(rec, req)
 
 	res := rec.Result()
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		t.Fatal(err)

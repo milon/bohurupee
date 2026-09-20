@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security report
+    url: https://github.com/milon/bohurupee/security/advisories/new
+    about: Report a vulnerability privately. Do not file a public issue for sensitive findings.
+  - name: Laravel Socialite adapter
+    url: https://github.com/milon/bohurupee-laravel/issues
+    about: Issues specific to milon/bohurupee-laravel belong in that repository.

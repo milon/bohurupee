@@ -1,0 +1,28 @@
+name: Feature request
+description: Propose a change to the local IdP (not a new production product)
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bohurupee stays a **local** fake IdP. Production IdP features, LAN bind
+        as a supported mode, and “every framework” adapters are non-goals.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to test or simulate locally?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Concrete behavior change (endpoint, YAML key, claim, docs).
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Persona `claims` / `response`, provider profiles, or existing docs?

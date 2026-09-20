@@ -11,10 +11,12 @@ path is `github.com/milon/bohurupee`.
 
 ```bash
 go test ./...
+golangci-lint run
 go build -o ./bohurupee ./cmd/bohurupee
 ```
 
-People running a release binary do not need this toolchain. See the
+CI runs `golangci-lint` and `go test` as separate jobs; either failing blocks
+the PR. People running a release binary do not need this toolchain. See the
 [README](README.md).
 
 ## Dependencies
@@ -36,7 +38,29 @@ the binary exits.
 | **`encoding/json`** (stdlib) | Token and userinfo JSON. |
 | **`net/url`** (stdlib) | `code` and `state` on `redirect_uri`. |
 | **`sync` / `time`** (stdlib) | In-memory grant store. Codes last 2 minutes. Tokens last 1 hour. |
-| **GoReleaser** | `.goreleaser.yaml` publishes darwin, linux, and windows archives, plus a multi-arch scratch image, on a `v*` tag. |
+| **GoReleaser** | `.goreleaser.yaml` publishes darwin, linux, and windows archives, plus a multi-arch scratch image, on a `v*` tag. The release workflow then copies the rendered Homebrew cask into [milon/homebrew-bohurupee](https://github.com/milon/homebrew-bohurupee). |
+
+## Release
+
+1. Land changes on `master`. Update [CHANGELOG.md](CHANGELOG.md) (move
+   Unreleased notes under a dated version).
+2. Tag and push the binary repo, for example `v0.5.0`:
+
+   ```bash
+   git tag v0.5.0
+   git push origin v0.5.0
+   ```
+
+   That runs tests, publishes GitHub Release assets, pushes
+   `ghcr.io/milon/bohurupee:v0.5.0`, and updates the Homebrew cask (requires
+   the `HOMEBREW_TAP_DEPLOY_KEY` secret).
+3. Tag the same version on [milon/bohurupee-laravel](https://github.com/milon/bohurupee-laravel)
+   so Packagist matches.
+4. Point README install examples at the new version if they still name an
+   older tag.
+
+Do not reintroduce `ids:` on the GoReleaser `homebrew_casks` block; that
+broke cask archive binding on `v0.2.0`.
 
 ## Add a response template
 
