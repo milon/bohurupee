@@ -41,9 +41,23 @@ type ConsentData struct {
 }
 
 type FormPostData struct {
-	Action string
-	Code   string
-	State  string
+	Action           string
+	Code             string
+	State            string
+	Error            string
+	ErrorDescription string
+}
+
+func denyURL(q url.Values) string {
+	cp := make(url.Values, len(q)+1)
+	for k, vs := range q {
+		if k == "auto" {
+			continue
+		}
+		cp[k] = append([]string{}, vs...)
+	}
+	cp.Set("deny", "1")
+	return "?" + cp.Encode()
 }
 
 func Load() (*Templates, error) {
@@ -53,6 +67,7 @@ func Load() (*Templates, error) {
 	}
 	funcMap := template.FuncMap{
 		"continueURL": continueURL,
+		"denyURL":     denyURL,
 		"logo": func() template.HTML {
 			return template.HTML(assets.Logo)
 		},
@@ -131,6 +146,9 @@ var knownProviders = map[string]string{
 func continueURL(q url.Values, personaID string) string {
 	cp := make(url.Values, len(q)+1)
 	for k, vs := range q {
+		if k == "deny" {
+			continue
+		}
 		cp[k] = append([]string{}, vs...)
 	}
 	cp.Set("auto", personaID)

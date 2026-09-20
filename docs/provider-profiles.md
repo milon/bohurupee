@@ -25,12 +25,31 @@ Later steps overwrite earlier keys (nested objects are merged):
 1. Generic persona fields
 2. Matched template (explicit `responseTemplate`, else the slug's built-in
    template, else `default`)
-3. Custom `response:` map (if set)
+3. Custom profile `response:` map (if set)
 4. Generic persona fields again (so `id` / `email` / `name` / `nickname` /
    `avatar` stay present for client getters)
+5. Persona `claims:`
+6. Persona `response:` overlay (can clear getters, including `avatar: ""`)
 
-String values in `response:` may use `{{nickname}}`, `{{email}}`, `{{name}}`,
-`{{id}}`, `{{sub}}`, `{{avatar}}`, `{{provider}}`.
+String values in profile or persona `response:` may use `{{nickname}}`,
+`{{email}}`, `{{name}}`, `{{id}}`, `{{sub}}`, `{{avatar}}`, `{{provider}}`.
+
+Persona extras in YAML:
+
+```yaml
+personas:
+  - id: bob
+    email: bob@example.com
+    name: Bob User
+    email_verified: false
+    claims:
+      role: user
+    response:
+      title: "{{nickname}}"
+```
+
+Omit `avatar` to keep the Dicebear default. Set `avatar: ""` for a missing
+picture. `claims` also appear on the `id_token` (except reserved JWT keys).
 
 ## Example
 

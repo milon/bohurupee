@@ -103,3 +103,27 @@ func TestUnknownTemplateRejected(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
+
+func TestRenderPersonaOverlayWins(t *testing.T) {
+	t.Parallel()
+	bob := oauth.Persona{
+		ID:            "bob",
+		Email:         "bob@example.com",
+		EmailVerified: false,
+		Name:          "Bob User",
+		Nickname:      "bob",
+		Avatar:        "",
+		Claims:        map[string]any{"role": "user"},
+		Response:      map[string]any{"picture": ""},
+	}
+	body := Render("acme", bob, Profile{})
+	if body["email_verified"] != false || body["role"] != "user" {
+		t.Fatalf("%v", body)
+	}
+	if body["avatar"] != "" || body["picture"] != "" {
+		t.Fatalf("empty overlay lost: %v", body)
+	}
+	if body["id"] != "acme:bob" || body["email"] != bob.Email {
+		t.Fatalf("getters missing: %v", body)
+	}
+}

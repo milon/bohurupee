@@ -17,6 +17,8 @@ type Persona struct {
 	Name          string
 	Nickname      string
 	Avatar        string
+	Claims        map[string]any
+	Response      map[string]any
 }
 
 type Userinfo struct {

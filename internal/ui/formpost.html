@@ -7,7 +7,9 @@
 <body>
   <p>DEV ONLY — returning to the application…</p>
   <form id="callback" method="post" action="{{.Action}}">
-    <input type="hidden" name="code" value="{{.Code}}">
+    {{if .Code}}<input type="hidden" name="code" value="{{.Code}}">{{end}}
+    {{if .Error}}<input type="hidden" name="error" value="{{.Error}}">{{end}}
+    {{if .ErrorDescription}}<input type="hidden" name="error_description" value="{{.ErrorDescription}}">{{end}}
     <input type="hidden" name="state" value="{{.State}}">
     <noscript><button type="submit">Continue</button></noscript>
   </form>

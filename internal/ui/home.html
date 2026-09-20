@@ -46,8 +46,9 @@
           <li class="route"><span class="method">GET</span><code>/{provider}/userinfo</code></li>
           <li class="route"><span class="method">GET</span><code>/{provider}/.well-known/openid-configuration</code></li>
           <li class="route"><span class="method">GET</span><code>/{provider}/jwks</code></li>
+          <li class="route"><span class="method">POST</span><code>/__login</code></li>
         </ul>
-        <p class="hint">Replace <code>{provider}</code> with any slug, such as <code>google</code> or <code>github</code>. <a href="{{.DiscoveryURL}}">Open Google discovery</a>.</p>
+        <p class="hint">Replace <code>{provider}</code> with any slug, such as <code>google</code> or <code>github</code>. Consent can <strong>Deny</strong>. Tests can <code>POST /__login</code> instead of <code>auto=</code>. <a href="{{.DiscoveryURL}}">Open Google discovery</a>.</p>
       </section>
 
       <section class="card">

@@ -36,12 +36,14 @@ type fileProtocol struct {
 }
 
 type filePersona struct {
-	ID            string `yaml:"id"`
-	Email         string `yaml:"email"`
-	EmailVerified *bool  `yaml:"email_verified"`
-	Name          string `yaml:"name"`
-	Nickname      string `yaml:"nickname"`
-	Avatar        string `yaml:"avatar"`
+	ID            string         `yaml:"id"`
+	Email         string         `yaml:"email"`
+	EmailVerified *bool          `yaml:"email_verified"`
+	Name          string         `yaml:"name"`
+	Nickname      string         `yaml:"nickname"`
+	Avatar        *string        `yaml:"avatar"`
+	Claims        map[string]any `yaml:"claims"`
+	Response      map[string]any `yaml:"response"`
 }
 
 type Config struct {
@@ -174,9 +176,9 @@ func (fp filePersona) toPersona() (oauth.Persona, error) {
 	if nick == "" {
 		nick = id
 	}
-	avatar := strings.TrimSpace(fp.Avatar)
-	if avatar == "" {
-		avatar = "https://api.dicebear.com/9.x/identicon/svg?seed=" + id
+	avatar := "https://api.dicebear.com/9.x/identicon/svg?seed=" + id
+	if fp.Avatar != nil {
+		avatar = strings.TrimSpace(*fp.Avatar)
 	}
 	return oauth.Persona{
 		ID:            id,
@@ -185,5 +187,7 @@ func (fp filePersona) toPersona() (oauth.Persona, error) {
 		Name:          strings.TrimSpace(fp.Name),
 		Nickname:      nick,
 		Avatar:        avatar,
+		Claims:        fp.Claims,
+		Response:      fp.Response,
 	}, nil
 }

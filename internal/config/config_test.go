@@ -36,6 +36,21 @@ func TestLoadExampleYAML(t *testing.T) {
 	if bob.Email != "bob@example.com" || bob.Name != "Bob User" || bob.Nickname != "bob" {
 		t.Fatalf("bob = %+v", bob)
 	}
+	if bob.EmailVerified {
+		t.Fatal("bob should be unverified")
+	}
+	if bob.Claims["role"] != "user" {
+		t.Fatalf("bob claims = %#v", bob.Claims)
+	}
+	var carol oauth.Persona
+	for _, p := range cfg.Personas {
+		if p.ID == "carol" {
+			carol = p
+		}
+	}
+	if carol.Avatar != "" {
+		t.Fatalf("carol avatar = %q", carol.Avatar)
+	}
 	gh, ok := cfg.Profiles["github"]
 	if !ok || gh.Template != "github" {
 		t.Fatalf("github profile = %+v ok=%v", gh, ok)

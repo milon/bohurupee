@@ -102,9 +102,16 @@ for production.
 
 ## Automated login
 
-The browser consent page lets a developer select a configured persona. Tests
-and command-line examples can add `auto=alice` (or another persona ID) to the
-authorization request. `BOHURUPEE_AUTO_APPROVE=1` chooses the default persona.
+The browser consent page lets a developer select a configured persona, or
+click **Deny** (`error=access_denied` on `redirect_uri`). Tests can:
+
+- add `auto=alice` to the authorization request
+- set `BOHURUPEE_AUTO_APPROVE=1` for the default persona
+- `POST /__login` with `persona=alice` so the next authorize in that cookie
+  jar skips consent without rewriting the authorize URL
+
+Playwright: [`examples/playwright`](../examples/playwright). PHP:
+[`examples/php`](../examples/php).
 
 See also:
 

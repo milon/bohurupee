@@ -17,6 +17,7 @@ php artisan serve
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000). After consent, the callback
 prints the Socialite user as JSON (`id`, `email`, `name`, `nickname`, `avatar`,
-and `raw`).
+and `raw`). Deny or other OAuth failures return JSON with `error` and
+`error_description` instead of Laravel’s exception page.
 
 Requires PHP 8.2+ and Composer. See [`docs/socialite.md`](../../docs/socialite.md).

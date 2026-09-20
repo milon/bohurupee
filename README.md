@@ -157,6 +157,12 @@ The first script returns generic userinfo for `/acme`. The second returns
 GitHub-shaped userinfo for `/github`. The Python client discovers the issuer,
 uses PKCE, and verifies the `id_token`.
 
+Browser tests can call `POST /__login` instead of adding `auto=` to every
+authorize URL. Playwright and PHP helpers live in
+[`examples/playwright`](examples/playwright) and
+[`examples/php`](examples/php). The consent page has a **Deny** button that
+sends the app `error=access_denied`.
+
 ### What you get back
 
 With no provider profile, userinfo is the same shape for every slug:
@@ -205,9 +211,14 @@ personas:
     email: alice@example.com
     name: Alice Admin
     nickname: alice
+    claims:
+      role: admin
   - id: bob
     email: bob@example.com
     name: Bob User
+    email_verified: false
+    claims:
+      role: user
 
 providerProfiles:
   github:
@@ -235,7 +246,8 @@ fields. The example config also sets protocol and endpoints for a few slugs
 (`facebook` `/me`, Apple `form_post`).
 
 Generic fields (`id`, `email`, `name`, `nickname`, `avatar`) stay present so
-client getters keep working.
+client getters keep working, unless a persona `response:` overlay sets the
+same key (for example an empty avatar).
 
 Apple's profile defaults to `response_mode=form_post` and always returns an
 `id_token`. Facebook's profile also serves userinfo at `/facebook/me`.
@@ -290,13 +302,14 @@ is the same override inside the container.
 
 ## Endpoints
 
-| Method | Path                                           | Notes                                                                                                                                                    |
-|--------|------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `GET`  | `/{provider}/authorize`                        | `client_id`, `redirect_uri`, `response_type=code`, `state`. Consent page, or `?auto=<persona>`. `response_mode=form_post` auto-posts `code` and `state`. |
-| `POST` | `/{provider}/token`                            | Form body and/or HTTP Basic. `grant_type=authorization_code`. Send `code_verifier` when a PKCE challenge was used.                                       |
-| `GET`  | `/{provider}/userinfo`                         | `Authorization: Bearer …`                                                                                                                                |
-| `GET`  | `/{provider}/.well-known/openid-configuration` | Issuer, authorize, token, userinfo, jwks                                                                                                                 |
-| `GET`  | `/{provider}/jwks`                             | JWKS. Alias: `/{provider}/auth/keys`                                                                                                                     |
+| Method       | Path                                           | Notes                                                                                                                                                                                                                    |
+|--------------|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GET`        | `/{provider}/authorize`                        | `client_id`, `redirect_uri`, `response_type=code`, `state`. Consent, `?auto=<persona>`, or `?deny=1`. Failed requests with a valid `redirect_uri` return `?error=` (RFC 6749). `form_post` auto-posts `code` or `error`. |
+| `POST`       | `/{provider}/token`                            | Form body and/or HTTP Basic. `grant_type=authorization_code`. Errors are `{"error":"invalid_grant"}` (and friends). Send `code_verifier` when a PKCE challenge was used.                                                 |
+| `GET`        | `/{provider}/userinfo`                         | `Authorization: Bearer …`                                                                                                                                                                                                |
+| `GET`        | `/{provider}/.well-known/openid-configuration` | Issuer, authorize, token, userinfo, jwks                                                                                                                                                                                 |
+| `GET`        | `/{provider}/jwks`                             | JWKS. Alias: `/{provider}/auth/keys`                                                                                                                                                                                     |
+| `GET`/`POST` | `/__login`                                     | Test helper. `persona` (and optional `provider`). Sets a cookie so the next authorize skips consent.                                                                                                                     |
 
 ## Security
 

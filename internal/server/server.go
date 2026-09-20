@@ -99,6 +99,8 @@ func NewWithOptions(opts Options) (*Server, error) {
 	}
 	s.mux.HandleFunc("GET /{$}", s.handleHome)
 	s.mux.HandleFunc("GET /favicon.svg", s.handleFavicon)
+	s.mux.HandleFunc("GET /__login", s.handleLogin)
+	s.mux.HandleFunc("POST /__login", s.handleLogin)
 	s.mux.HandleFunc("GET /{provider}/authorize", s.handleAuthorize)
 	s.mux.HandleFunc("POST /{provider}/token", s.handleToken)
 	s.mux.HandleFunc("GET /{provider}/userinfo", s.handleUserinfo)

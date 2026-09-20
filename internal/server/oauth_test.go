@@ -29,10 +29,40 @@ func TestAuthorizeShowsConsent(t *testing.T) {
 		t.Fatalf("status = %d, want 200 body = %s", rec.Code, rec.Body.String())
 	}
 	body := rec.Body.String()
-	for _, needle := range []string{"DEV ONLY", "Alice Admin", "auto=alice", "<title>Google — Bohurupee</title>", "Sign in with"} {
+	for _, needle := range []string{"DEV ONLY", "Alice Admin", "auto=alice", "deny=1", ">Deny<", "data-choice", "role=\"listbox\"", "<title>Google — Bohurupee</title>", "Sign in with"} {
 		if !strings.Contains(body, needle) {
 			t.Fatalf("consent missing %q\n%s", needle, body)
 		}
+	}
+}
+
+func TestConsentFocusesLastPersona(t *testing.T) {
+	t.Parallel()
+	srv := mustServer(t, Options{
+		Addr:     listen.Addr{Host: "127.0.0.1", Port: 4190},
+		Personas: examplePersonas(),
+	})
+	req := httptest.NewRequest(http.MethodGet, authorizeURL("google", false), nil)
+	req.AddCookie(&http.Cookie{Name: personaCookie, Value: "bob"})
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	body := rec.Body.String()
+	bobOpen := strings.Index(body, "auto=bob")
+	if bobOpen < 0 {
+		t.Fatal("missing bob continue URL")
+	}
+	chunk := body[bobOpen:]
+	end := strings.Index(chunk, "</a>")
+	if end < 0 {
+		t.Fatal("unclosed bob link")
+	}
+	if !strings.Contains(chunk[:end], `tabindex="0"`) {
+		t.Fatal("Bob should start focused after last-persona cookie")
+	}
+	aliceOpen := strings.Index(body, "auto=alice")
+	aliceChunk := body[aliceOpen:bobOpen]
+	if strings.Contains(aliceChunk, `tabindex="0"`) {
+		t.Fatal("Alice should not be the keyboard start when Bob was last used")
 	}
 }
 
@@ -75,8 +105,8 @@ func TestTokenRejectsReusedCode(t *testing.T) {
 	code := authorizeCode(t, srv, "google", false)
 	_ = exchangeToken(t, srv, "google", code, http.StatusOK)
 	body := exchangeToken(t, srv, "google", code, http.StatusBadRequest)
-	if !strings.Contains(body, "invalid_grant") {
-		t.Fatalf("reuse error body = %s", body)
+	if got := tokenErrorCode(t, body); got != "invalid_grant" {
+		t.Fatalf("reuse error = %q body = %s", got, body)
 	}
 }
 
@@ -92,8 +122,8 @@ func TestTokenRejectsExpiredCode(t *testing.T) {
 	code := authorizeCode(t, srv, "google", false)
 	clock.Advance(time.Minute)
 	body := exchangeToken(t, srv, "google", code, http.StatusBadRequest)
-	if !strings.Contains(body, "invalid_grant") {
-		t.Fatalf("expired error body = %s", body)
+	if got := tokenErrorCode(t, body); got != "invalid_grant" {
+		t.Fatalf("expired error = %q body = %s", got, body)
 	}
 }
 
@@ -213,8 +243,11 @@ func TestPKCERequiredAndS256(t *testing.T) {
 	missing := httptest.NewRequest(http.MethodGet, authorizeURL("google", true), nil)
 	missRec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(missRec, missing)
-	if missRec.Code != http.StatusBadRequest {
-		t.Fatalf("missing challenge status = %d", missRec.Code)
+	if missRec.Code != http.StatusFound {
+		t.Fatalf("missing challenge status = %d body = %s", missRec.Code, missRec.Body.String())
+	}
+	if got := authorizeError(t, missRec.Header().Get("Location")); got != "invalid_request" {
+		t.Fatalf("missing challenge error = %q", got)
 	}
 
 	verifier := "pkce-verifier-value-that-is-long-enough"
@@ -241,8 +274,8 @@ func TestPKCERequiredAndS256(t *testing.T) {
 	}
 	code := loc.Query().Get("code")
 	body := exchangeTokenVerifier(t, srv, "google", code, "", http.StatusBadRequest)
-	if !strings.Contains(body, "invalid_grant") {
-		t.Fatalf("missing verifier body = %s", body)
+	if got := tokenErrorCode(t, body); got != "invalid_grant" {
+		t.Fatalf("missing verifier error = %q body = %s", got, body)
 	}
 	_ = exchangeTokenVerifier(t, srv, "google", code, verifier, http.StatusOK)
 }
@@ -264,8 +297,159 @@ func TestPKCEForbiddenRejectsChallenge(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/google/authorize?"+q.Encode(), nil)
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if got := authorizeError(t, rec.Header().Get("Location")); got != "invalid_request" {
+		t.Fatalf("forbidden pkce error = %q", got)
+	}
+}
+
+func TestDenyRedirectsAccessDenied(t *testing.T) {
+	t.Parallel()
+	srv := mustServer(t, Options{Addr: listen.Addr{Host: "127.0.0.1", Port: 4190}})
+	q := url.Values{
+		"client_id":     {"dev-client"},
+		"redirect_uri":  {"http://127.0.0.1:9999/callback"},
+		"response_type": {"code"},
+		"state":         {"state-xyz"},
+		"deny":          {"1"},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/google/authorize?"+q.Encode(), nil)
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	loc, err := url.Parse(rec.Header().Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loc.Query().Get("error") != "access_denied" || loc.Query().Get("state") != "state-xyz" {
+		t.Fatalf("location = %s", rec.Header().Get("Location"))
+	}
+	if loc.Query().Get("code") != "" {
+		t.Fatalf("deny must not issue a code: %s", rec.Header().Get("Location"))
+	}
+}
+
+func TestInvalidRedirectURIDoesNotRedirect(t *testing.T) {
+	t.Parallel()
+	srv := mustServer(t, Options{Addr: listen.Addr{Host: "127.0.0.1", Port: 4190}})
+	q := url.Values{
+		"client_id":     {"dev-client"},
+		"redirect_uri":  {"not-a-url"},
+		"response_type": {"code"},
+		"state":         {"state-xyz"},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/google/authorize?"+q.Encode(), nil)
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestUnsupportedResponseTypeRedirects(t *testing.T) {
+	t.Parallel()
+	srv := mustServer(t, Options{Addr: listen.Addr{Host: "127.0.0.1", Port: 4190}})
+	q := url.Values{
+		"client_id":     {"dev-client"},
+		"redirect_uri":  {"http://127.0.0.1:9999/callback"},
+		"response_type": {"token"},
+		"state":         {"state-xyz"},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/google/authorize?"+q.Encode(), nil)
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if got := authorizeError(t, rec.Header().Get("Location")); got != "unsupported_response_type" {
+		t.Fatalf("error = %q", got)
+	}
+}
+
+func TestPersonaOverlayUnverifiedBob(t *testing.T) {
+	t.Parallel()
+	bob := oauth.Persona{
+		ID:            "bob",
+		Email:         "bob@example.com",
+		EmailVerified: false,
+		Name:          "Bob User",
+		Nickname:      "bob",
+		Avatar:        "https://api.dicebear.com/9.x/identicon/svg?seed=bob",
+		Claims:        map[string]any{"role": "user"},
+	}
+	alice := oauth.Alice
+	alice.Claims = map[string]any{"role": "admin"}
+	srv := mustServer(t, Options{
+		Addr:     listen.Addr{Host: "127.0.0.1", Port: 4190},
+		Personas: []oauth.Persona{alice, bob},
+	})
+	bobInfo := userinfoMap(t, srv, "google", authorizeCodePersona(t, srv, "google", "bob"))
+	if bobInfo["email_verified"] != false || bobInfo["role"] != "user" || bobInfo["id"] != "google:bob" {
+		t.Fatalf("bob = %v", bobInfo)
+	}
+	aliceInfo := userinfoMap(t, srv, "google", authorizeCodePersona(t, srv, "google", "alice"))
+	if aliceInfo["email_verified"] != true || aliceInfo["role"] != "admin" {
+		t.Fatalf("alice = %v", aliceInfo)
+	}
+}
+
+func TestLoginAsCookieSkipsConsent(t *testing.T) {
+	t.Parallel()
+	srv := mustServer(t, Options{
+		Addr:     listen.Addr{Host: "127.0.0.1", Port: 4190},
+		Personas: examplePersonas(),
+	})
+	login := httptest.NewRequest(http.MethodPost, "/__login", strings.NewReader("persona=bob&provider=google"))
+	login.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	loginRec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(loginRec, login)
+	if loginRec.Code != http.StatusOK {
+		t.Fatalf("login status = %d body = %s", loginRec.Code, loginRec.Body.String())
+	}
+	var payload struct {
+		Persona string `json:"persona"`
+	}
+	if err := json.Unmarshal(loginRec.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Persona != "bob" {
+		t.Fatalf("login payload = %+v", payload)
+	}
+	cookies := loginRec.Result().Cookies()
+
+	req := httptest.NewRequest(http.MethodGet, authorizeURL("google", false), nil)
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusFound {
+		t.Fatalf("authorize status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	loc, err := url.Parse(rec.Header().Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	code := loc.Query().Get("code")
+	if code == "" {
+		t.Fatalf("expected code, got %s", rec.Header().Get("Location"))
+	}
+	info := userinfoForCode(t, srv, "google", code, "")
+	if info.ID != "google:bob" {
+		t.Fatalf("userinfo = %+v", info)
+	}
+}
+
+func TestTokenUnknownCodeJSON(t *testing.T) {
+	t.Parallel()
+	srv := mustServer(t, Options{Addr: listen.Addr{Host: "127.0.0.1", Port: 4190}})
+	body := exchangeToken(t, srv, "google", "nope", http.StatusBadRequest)
+	if got := tokenErrorCode(t, body); got != "invalid_grant" {
+		t.Fatalf("error = %q body = %s", got, body)
 	}
 }
 
@@ -475,4 +659,24 @@ func cloneValues(v url.Values) url.Values {
 		out[k] = append([]string{}, vs...)
 	}
 	return out
+}
+
+func tokenErrorCode(t *testing.T, body string) string {
+	t.Helper()
+	var m struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(body), &m); err != nil {
+		t.Fatalf("token error json: %v body = %s", err, body)
+	}
+	return m.Error
+}
+
+func authorizeError(t *testing.T, loc string) string {
+	t.Helper()
+	u, err := url.Parse(loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return u.Query().Get("error")
 }

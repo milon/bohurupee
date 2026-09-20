@@ -9,13 +9,21 @@ personas:
     email: alice@example.com
     name: Alice Admin
     nickname: alice
+    claims:
+      role: admin
   - id: bob
     email: bob@example.com
     name: Bob User
+    email_verified: false
+    claims:
+      role: user
   - id: carol
     email: carol@example.com
     name: Carol Reviewer
     nickname: carol
+    avatar: ""
+    response:
+      picture: ""
 
 providerProfiles:
   github:

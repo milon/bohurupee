@@ -13,7 +13,10 @@ import (
 	"github.com/milon/bohurupee/internal/ui"
 )
 
-const personaCookie = "bohurupee_persona"
+const (
+	personaCookie = "bohurupee_persona"
+	autoCookie    = "bohurupee_auto"
+)
 
 type authRequest struct {
 	Provider            string
@@ -27,6 +30,20 @@ type authRequest struct {
 	Auto                string
 	Scope               string
 	Nonce               string
+	Deny                bool
+}
+
+type authError struct {
+	Redirect bool
+	Code     string
+	Desc     string
+}
+
+func (e authError) Error() string {
+	if e.Desc != "" {
+		return e.Desc
+	}
+	return e.Code
 }
 
 func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
@@ -37,14 +54,19 @@ func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 
 	req, err := parseAuthRequest(r, s.pkce)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		s.writeAuthorizeError(w, req, err)
 		return
 	}
 	s.applyProfileDefaults(&req)
 
-	persona, err := s.resolvePersona(req.Auto)
+	if req.Deny {
+		s.finishAuthorize(w, req, "", "access_denied", "the user denied the request")
+		return
+	}
+
+	persona, err := s.resolvePersona(r, req.Auto)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		s.writeAuthorizeError(w, req, err)
 		return
 	}
 	if persona == nil {
@@ -75,35 +97,13 @@ func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 		HttpOnly: true,
 	})
-	w.Header().Set("Cache-Control", "no-store")
-
-	if req.ResponseMode == "form_post" {
-		html, err := s.ui.RenderFormPost(ui.FormPostData{
-			Action: req.RedirectURI,
-			Code:   code,
-			State:  req.State,
-		})
-		if err != nil {
-			http.Error(w, "template error", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write(html)
-		return
-	}
-
-	loc, err := redirectWithCode(req.RedirectURI, code, req.State)
-	if err != nil {
-		http.Error(w, "invalid redirect_uri", http.StatusBadRequest)
-		return
-	}
-	http.Redirect(w, r, loc, http.StatusFound)
+	s.finishAuthorize(w, req, code, "", "")
 }
 
 func parseAuthRequest(r *http.Request, pkce oauth.PKCEMode) (authRequest, error) {
 	provider := r.PathValue("provider")
 	if !oauth.ValidProvider(provider) {
-		return authRequest{}, fmt.Errorf("invalid provider")
+		return authRequest{}, authError{Code: "invalid_request", Desc: "invalid provider"}
 	}
 	q := r.URL.Query()
 	req := authRequest{
@@ -118,31 +118,32 @@ func parseAuthRequest(r *http.Request, pkce oauth.PKCEMode) (authRequest, error)
 		Auto:                strings.TrimSpace(q.Get("auto")),
 		Scope:               strings.TrimSpace(q.Get("scope")),
 		Nonce:               q.Get("nonce"),
+		Deny:                truthy(q.Get("deny")),
 	}
 	if req.ClientID == "" {
-		return authRequest{}, fmt.Errorf("missing client_id")
+		return req, authError{Code: "invalid_request", Desc: "missing client_id"}
 	}
 	if err := validateRedirectURI(req.RedirectURI); err != nil {
-		return authRequest{}, err
+		return req, authError{Code: "invalid_request", Desc: err.Error()}
 	}
 	if req.ResponseType != "code" {
-		return authRequest{}, fmt.Errorf("response_type must be code")
+		return req, authError{Redirect: true, Code: "unsupported_response_type", Desc: "response_type must be code"}
 	}
 	if req.State == "" {
-		return authRequest{}, fmt.Errorf("missing state")
+		return req, authError{Redirect: true, Code: "invalid_request", Desc: "missing state"}
 	}
 	switch req.ResponseMode {
 	case "", "query", "form_post":
 	default:
-		return authRequest{}, fmt.Errorf("response_mode must be query or form_post")
+		return req, authError{Redirect: true, Code: "invalid_request", Desc: "response_mode must be query or form_post"}
 	}
 	method, err := oauth.NormalizeChallengeMethod(req.CodeChallengeMethod, req.CodeChallenge)
 	if err != nil {
-		return authRequest{}, err
+		return req, authError{Redirect: true, Code: "invalid_request", Desc: err.Error()}
 	}
 	req.CodeChallengeMethod = method
 	if err := oauth.CheckAuthorizePKCE(pkce, req.CodeChallenge); err != nil {
-		return authRequest{}, err
+		return req, authError{Redirect: true, Code: "invalid_request", Desc: err.Error()}
 	}
 	return req, nil
 }
@@ -157,17 +158,27 @@ func (s *Server) applyProfileDefaults(req *authRequest) {
 	}
 }
 
-func (s *Server) resolvePersona(auto string) (*oauth.Persona, error) {
+func (s *Server) resolvePersona(r *http.Request, auto string) (*oauth.Persona, error) {
 	if auto != "" {
 		p, ok := s.catalog.Lookup(auto)
 		if !ok {
-			return nil, fmt.Errorf("unknown persona %q", auto)
+			return nil, authError{Redirect: true, Code: "invalid_request", Desc: fmt.Sprintf("unknown persona %q", auto)}
 		}
 		return &p, nil
 	}
 	if s.autoApprove {
 		p := s.catalog.Default()
 		return &p, nil
+	}
+	if c, err := r.Cookie(autoCookie); err == nil {
+		id := strings.TrimSpace(c.Value)
+		if id != "" {
+			p, ok := s.catalog.Lookup(id)
+			if !ok {
+				return nil, authError{Redirect: true, Code: "invalid_request", Desc: fmt.Sprintf("unknown persona %q", id)}
+			}
+			return &p, nil
+		}
 	}
 	return nil, nil
 }
@@ -375,16 +386,123 @@ func validateRedirectURI(raw string) error {
 	return nil
 }
 
-func redirectWithCode(redirectURI, code, state string) (string, error) {
+func redirectWithQuery(redirectURI string, extra url.Values) (string, error) {
 	u, err := url.Parse(redirectURI)
 	if err != nil {
 		return "", err
 	}
 	q := u.Query()
-	q.Set("code", code)
-	q.Set("state", state)
+	for k, vs := range extra {
+		for _, v := range vs {
+			q.Set(k, v)
+		}
+	}
 	u.RawQuery = q.Encode()
 	return u.String(), nil
+}
+
+func (s *Server) writeAuthorizeError(w http.ResponseWriter, req authRequest, err error) {
+	ae, ok := err.(authError)
+	if !ok {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if ae.Redirect && validateRedirectURI(req.RedirectURI) == nil {
+		s.finishAuthorize(w, req, "", ae.Code, ae.Desc)
+		return
+	}
+	http.Error(w, ae.Error(), http.StatusBadRequest)
+}
+
+func (s *Server) finishAuthorize(w http.ResponseWriter, req authRequest, code, errCode, errDesc string) {
+	s.applyProfileDefaults(&req)
+	w.Header().Set("Cache-Control", "no-store")
+	if req.ResponseMode == "form_post" {
+		html, err := s.ui.RenderFormPost(ui.FormPostData{
+			Action:           req.RedirectURI,
+			Code:             code,
+			State:            req.State,
+			Error:            errCode,
+			ErrorDescription: errDesc,
+		})
+		if err != nil {
+			http.Error(w, "template error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(html)
+		return
+	}
+	q := url.Values{}
+	if errCode != "" {
+		q.Set("error", errCode)
+		if errDesc != "" {
+			q.Set("error_description", errDesc)
+		}
+	} else {
+		q.Set("code", code)
+	}
+	q.Set("state", req.State)
+	loc, err := redirectWithQuery(req.RedirectURI, q)
+	if err != nil {
+		http.Error(w, "invalid redirect_uri", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Location", loc)
+	w.WriteHeader(http.StatusFound)
+}
+
+func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if r.Method == http.MethodPost {
+		if err := r.ParseForm(); err != nil {
+			writeTokenError(w, http.StatusBadRequest, "invalid_request", "could not parse form")
+			return
+		}
+	}
+	personaID := strings.TrimSpace(firstForm(r, "persona"))
+	if personaID == "" {
+		personaID = strings.TrimSpace(r.URL.Query().Get("persona"))
+	}
+	provider := strings.TrimSpace(firstForm(r, "provider"))
+	if provider == "" {
+		provider = strings.TrimSpace(r.URL.Query().Get("provider"))
+	}
+	if provider != "" && !oauth.ValidProvider(provider) {
+		writeTokenError(w, http.StatusBadRequest, "invalid_request", "invalid provider")
+		return
+	}
+	p, ok := s.catalog.Lookup(personaID)
+	if !ok {
+		writeTokenError(w, http.StatusBadRequest, "invalid_request", fmt.Sprintf("unknown persona %q", personaID))
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     autoCookie,
+		Value:    p.ID,
+		Path:     "/",
+		MaxAge:   30 * 24 * 60 * 60,
+		SameSite: http.SameSiteLaxMode,
+		HttpOnly: true,
+	})
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"persona":  p.ID,
+		"provider": provider,
+	})
+}
+
+func truthy(v string) bool {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 func writeTokenError(w http.ResponseWriter, status int, code, desc string) {

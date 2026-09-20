@@ -73,12 +73,13 @@ func (r *Registry) UserinfoAliases() []string {
 	return out
 }
 
-// Render merges generic → template → custom response → persona overlay
-// so Socialite-style getters still see id/email/name/nickname/avatar.
+// Render merges generic → template → profile response → generic getters →
+// persona claims → persona response. Getters stay present unless a persona
+// overlay sets the same key (including an empty avatar).
 //
 // The template is the explicit responseTemplate, otherwise the built-in
 // template for this slug, otherwise the default template. responseTemplate
-// generic (or none) keeps only the generic fields.
+// generic (or none) keeps only the generic fields before overlays.
 func Render(provider string, persona oauth.Persona, p Profile) map[string]any {
 	out := cloneMap(genericMap(persona, provider))
 	if fn := selectTemplate(provider, p.Template); fn != nil {
@@ -87,7 +88,14 @@ func Render(provider string, persona oauth.Persona, p Profile) map[string]any {
 	if len(p.Response) > 0 {
 		out = mergeMaps(out, interpolateMap(p.Response, provider, persona))
 	}
-	return mergeMaps(out, genericMap(persona, provider))
+	out = mergeMaps(out, genericMap(persona, provider))
+	if len(persona.Claims) > 0 {
+		out = mergeMaps(out, cloneMap(persona.Claims))
+	}
+	if len(persona.Response) > 0 {
+		out = mergeMaps(out, interpolateMap(persona.Response, provider, persona))
+	}
+	return out
 }
 
 func knownTemplate(name string) bool {

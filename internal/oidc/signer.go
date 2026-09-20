@@ -199,11 +199,28 @@ func (s *Signer) IDToken(in IDTokenInput) (string, error) {
 			return "", err
 		}
 	}
+	for k, v := range in.Persona.Claims {
+		if reservedIDTokenClaim(k) {
+			continue
+		}
+		if err := tok.Set(k, v); err != nil {
+			return "", err
+		}
+	}
 	signed, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), s.key))
 	if err != nil {
 		return "", err
 	}
 	return string(signed), nil
+}
+
+func reservedIDTokenClaim(k string) bool {
+	switch strings.ToLower(strings.TrimSpace(k)) {
+	case "iss", "sub", "aud", "exp", "iat", "nbf", "jti", "nonce":
+		return true
+	default:
+		return false
+	}
 }
 
 func keyID(pub *rsa.PublicKey) string {

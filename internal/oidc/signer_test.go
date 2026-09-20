@@ -52,6 +52,39 @@ func TestSignAndVerifyRoundTrip(t *testing.T) {
 	}
 }
 
+func TestIDTokenIncludesPersonaClaims(t *testing.T) {
+	t.Parallel()
+	s, err := Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := oauth.Alice
+	p.Claims = map[string]any{"role": "admin", "iss": "ignored"}
+	raw, err := s.IDToken(IDTokenInput{
+		Issuer:   "http://127.0.0.1:4190/google",
+		Audience: "dev-client",
+		Now:      time.Now(),
+		TTL:      time.Hour,
+		Provider: "google",
+		Persona:  p,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tok, err := jwt.ParseInsecure([]byte(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var role string
+	if err := tok.Get("role", &role); err != nil || role != "admin" {
+		t.Fatalf("role = %q err=%v", role, err)
+	}
+	iss, _ := tok.Issuer()
+	if iss != "http://127.0.0.1:4190/google" {
+		t.Fatalf("iss overwritten: %q", iss)
+	}
+}
+
 func TestLoadOrCreatePersists(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

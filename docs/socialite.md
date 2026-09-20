@@ -115,3 +115,7 @@ cd ../bohurupee-laravel
 composer install
 vendor/bin/phpunit
 ```
+
+Browser tests can skip consent with
+[`examples/playwright`](../examples/playwright) (`loginAs(context, 'alice', 'google')`)
+or [`examples/php`](../examples/php).
