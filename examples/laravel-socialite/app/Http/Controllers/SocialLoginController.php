@@ -6,6 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Laravel\Socialite\Facades\Socialite;
+use Milon\Bohurupee\OAuthErrorException;
 use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirect;
 use Throwable;
 
@@ -18,17 +19,10 @@ class SocialLoginController
 
     public function callback(Request $request, string $provider): JsonResponse
     {
-        if ($request->filled('error')) {
-            return response()->json([
-                'provider' => $provider,
-                'error' => $request->query('error'),
-                'error_description' => $request->query('error_description'),
-                'state' => $request->query('state'),
-            ], 400);
-        }
-
         try {
             $user = Socialite::driver($provider)->user();
+        } catch (OAuthErrorException $e) {
+            return response()->json($e->toArray(), 400);
         } catch (Throwable $e) {
             return response()->json([
                 'provider' => $provider,

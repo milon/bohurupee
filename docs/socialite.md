@@ -24,6 +24,8 @@ Laravel auto-discovers `Milon\Bohurupee\BohurupeeServiceProvider`.
 | `BOHURUPEE_URL` | `http://127.0.0.1:4190` | Bohurupee origin (no trailing slash needed) |
 | `BOHURUPEE_DRIVERS` | empty | Comma-separated Socialite names to wrap. Empty means every `Socialite::driver($name)`, including custom slugs |
 | `BOHURUPEE_EXCEPT` | empty | Names that keep the native Socialite provider (never wrapped) |
+| `BOHURUPEE_PUBLIC_URL` | same as `BOHURUPEE_URL` | Browser authorize URL when it differs from server-side (Docker) |
+| `BOHURUPEE_ERROR_REDIRECT` | auto (`/login`) | HTML redirect after Deny / OAuth `error=` |
 
 Example `.env`:
 
@@ -42,6 +44,14 @@ php artisan vendor:publish --tag=bohurupee-config
 
 Keep `config/services.php` as usual (`client_id`, `client_secret`, `redirect`).
 Bohurupee is an open local client: any secret is accepted.
+
+## Deny / OAuth errors
+
+Bohurupee may redirect to your callback with `error=access_denied` (consent
+**Deny**). The adapter throws `Milon\Bohurupee\OAuthErrorException` from
+`user()` and renders JSON (`400`) or redirects to login with a flash message,
+so you do not need a manual `if ($request->filled('error'))` check (unless you
+want custom handling).
 
 ## Production guard
 
