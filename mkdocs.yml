@@ -1,0 +1,72 @@
+site_name: Bohurupee
+site_description: Local fake identity provider for OAuth and OIDC development
+site_url: https://milon.github.io/bohurupee/
+site_author: milon
+
+repo_url: https://github.com/milon/bohurupee
+repo_name: milon/bohurupee
+edit_uri: edit/master/docs/
+
+copyright: DEV ONLY · MIT
+
+theme:
+  name: material
+  logo: assets/logo.svg
+  favicon: assets/favicon.svg
+  palette:
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - content.code.copy
+    - search.suggest
+    - toc.follow
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+
+nav:
+  - Home: index.md
+  - Guides:
+    - Get started: get-started.md
+    - Configuration: configuration.md
+    - Endpoints and CLI: endpoints.md
+    - Any framework: any-framework.md
+    - Provider profiles: provider-profiles.md
+    - Laravel Socialite: socialite.md
+  - Project:
+    - Security: security.md
+    - Contributing: contributing.md
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/milon/bohurupee

@@ -1,0 +1,34 @@
+# Amber / stone — matches the Bohurupee consent UI
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #b45309;
+  --md-primary-fg-color--light: #d97706;
+  --md-primary-fg-color--dark: #92400e;
+  --md-accent-fg-color: #b45309;
+  --md-accent-fg-color--transparent: rgba(180, 83, 9, 0.1);
+  --md-default-bg-color: #f6f1ea;
+  --md-code-bg-color: #efe8df;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #f59e0b;
+  --md-primary-fg-color--light: #fbbf24;
+  --md-primary-fg-color--dark: #d97706;
+  --md-accent-fg-color: #f59e0b;
+  --md-accent-fg-color--transparent: rgba(245, 158, 11, 0.12);
+}
+
+.md-header {
+  background-color: var(--md-primary-fg-color);
+}
+
+.md-typeset h1 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.md-typeset .hero-lede {
+  font-size: 1.15em;
+  color: var(--md-default-fg-color--light);
+  max-width: 36rem;
+}

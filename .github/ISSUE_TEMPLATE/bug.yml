@@ -5,8 +5,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Bohurupee is **DEV ONLY**. Confirm you are on loopback before filing.
-        Sensitive findings → [Security Advisories](https://github.com/milon/bohurupee/security/advisories/new).
+        Bohurupee is **DEV ONLY** and meant for loopback. Include version and
+        steps when you can.
   - type: input
     id: version
     attributes:

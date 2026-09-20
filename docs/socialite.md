@@ -3,30 +3,15 @@
 Point Socialite at a local Bohurupee process so Google, GitHub, and custom
 slugs never leave your machine.
 
-The adapter is a separate Composer package, `milon/bohurupee-laravel`
-(local checkout: `../bohurupee-laravel`). It is optional: any other stack can
-use the same OAuth/OIDC server with [`docs/any-framework.md`](any-framework.md).
+The adapter is a separate Composer package,
+[`milon/bohurupee-laravel`](https://packagist.org/packages/milon/bohurupee-laravel).
+It is optional: any other stack can use the same OAuth/OIDC server with
+[Any framework](any-framework.md).
 
 ## Install
 
 ```bash
 composer require milon/bohurupee-laravel --dev
-```
-
-From a sibling checkout, path-require it:
-
-```json
-{
-  "require-dev": {
-    "milon/bohurupee-laravel": "@dev"
-  },
-  "repositories": [
-    {
-      "type": "path",
-      "url": "../bohurupee-laravel"
-    }
-  ]
-}
 ```
 
 Laravel auto-discovers `Milon\Bohurupee\BohurupeeServiceProvider`.
@@ -37,8 +22,17 @@ Laravel auto-discovers `Milon\Bohurupee\BohurupeeServiceProvider`.
 |----------|---------|---------|
 | `BOHURUPEE_ENABLED` | `false` | Wrap Socialite when `true` |
 | `BOHURUPEE_URL` | `http://127.0.0.1:4190` | Bohurupee origin (no trailing slash needed) |
-| `BOHURUPEE_DRIVERS` | empty | Comma-separated Socialite names to wrap. Empty means every `Socialite::driver($name)` |
-| `BOHURUPEE_EXCEPT` | empty | Names that keep the native Socialite provider |
+| `BOHURUPEE_DRIVERS` | empty | Comma-separated Socialite names to wrap. Empty means every `Socialite::driver($name)`, including custom slugs |
+| `BOHURUPEE_EXCEPT` | empty | Names that keep the native Socialite provider (never wrapped) |
+
+Example `.env`:
+
+```env
+BOHURUPEE_ENABLED=true
+BOHURUPEE_URL=http://127.0.0.1:4190
+# BOHURUPEE_DRIVERS=google,github
+# BOHURUPEE_EXCEPT=apple
+```
 
 Publish the config if you prefer PHP over env:
 
@@ -90,7 +84,7 @@ and on the mapped nickname/avatar.
 
 ## Example app
 
-[`examples/laravel-socialite`](../examples/laravel-socialite) is a slim Laravel
+[`examples/laravel-socialite`](https://github.com/milon/bohurupee/tree/master/examples/laravel-socialite) is a slim Laravel
 app with Google and GitHub login buttons.
 
 ```bash
@@ -103,7 +97,12 @@ php artisan serve
 ```
 
 Open `http://127.0.0.1:8000` and choose a provider. Consent on Bohurupee
-returns JSON for the Socialite user.
+returns JSON for the Socialite user. Deny and other OAuth errors return JSON
+with `error` / `error_description` instead of Laravel’s exception page.
+
+Point Bohurupee personas and profiles with
+[Configuration](configuration.md). Provider-shaped GitHub userinfo needs a
+`github` profile — see [Provider profiles](provider-profiles.md).
 
 ## Tests
 
@@ -111,11 +110,12 @@ Package tests mock Guzzle so token and userinfo never touch `google.com` or
 `github.com`:
 
 ```bash
-cd ../bohurupee-laravel
+git clone https://github.com/milon/bohurupee-laravel.git
+cd bohurupee-laravel
 composer install
 vendor/bin/phpunit
 ```
 
 Browser tests can skip consent with
-[`examples/playwright`](../examples/playwright) (`loginAs(context, 'alice', 'google')`)
-or [`examples/php`](../examples/php).
+[`examples/playwright`](https://github.com/milon/bohurupee/tree/master/examples/playwright) (`loginAs(context, 'alice', 'google')`)
+or [`examples/php`](https://github.com/milon/bohurupee/tree/master/examples/php).

@@ -112,3 +112,6 @@ Used as **defaults** when the authorize query omits the matching parameter:
 | `id_token: true` | Always include `id_token` on the token response, even without `openid` scope |
 
 The client can still pass `response_mode=query` explicitly.
+
+YAML field reference for `providerProfiles` (and every other key) lives in
+[Configuration](configuration.md#providerprofiles).

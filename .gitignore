@@ -31,3 +31,6 @@ bohurupee.code-workspace
 /bohurupee.yaml
 /bohurupee-oidc.key
 !/bohurupee.example.yaml
+
+# MkDocs
+/site/

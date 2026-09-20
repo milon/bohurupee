@@ -1,31 +1,20 @@
 # Security Policy
 
-Bohurupee is a **DEV ONLY** fake identity provider. It is not a production
-IdP. Codes and tokens live in process memory. Any `client_id` and
-`client_secret` are accepted by default. Binding beyond loopback is a
-deliberate footgun (`--dangerously-bind-all-interfaces` or Docker publish
-mistakes).
-
-That does not mean security reports are unwelcome.
+Bohurupee is a **DEV ONLY** fake identity provider for local development. It
+is not a production IdP. Codes and tokens live in process memory. Any
+`client_id` and `client_secret` are accepted by default. Binding beyond
+loopback is a deliberate footgun (`--dangerously-bind-all-interfaces` or
+Docker publish mistakes).
 
 ## Supported versions
 
 Only the latest release line receives fixes. Older tags are historical.
 
-## Reporting a vulnerability
+## Reporting
 
-Please **do not** open a public GitHub issue for anything that could put
-users at risk if misused (for example a way to escape the loopback guard,
-tamper with tokens across origins, or confuse a real OAuth client into
-trusting Bohurupee in production).
-
-Report privately via
-[GitHub Security Advisories](https://github.com/milon/bohurupee/security/advisories/new)
-for this repository.
-
-Include Bohurupee version (`bohurupee --version`), OS, and steps to
-reproduce. We will acknowledge and decide whether a fix, docs change, or
-wontfix (out of threat model) is appropriate.
+Open a [GitHub issue](https://github.com/milon/bohurupee/issues) for bugs and
+docs problems. Include `bohurupee --version`, OS, and steps to reproduce when
+you can.
 
 ## Out of scope
 

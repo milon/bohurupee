@@ -59,7 +59,7 @@ the secret is accepted but not validated.
 
 ## Auth.js
 
-Use the drop-in helper in [`examples/authjs`](../examples/authjs) (copy
+Use the drop-in helper in [`examples/authjs`](https://github.com/milon/bohurupee/tree/master/examples/authjs) (copy
 `provider.ts` into your app). It already sets discovery + PKCE:
 
 ```ts
@@ -147,11 +147,13 @@ click **Deny** (`error=access_denied` on `redirect_uri`). Tests can:
 - `POST /__login` with `persona=alice` so the next authorize in that cookie
   jar skips consent without rewriting the authorize URL
 
-Playwright: [`examples/playwright`](../examples/playwright). PHP:
-[`examples/php`](../examples/php).
+Playwright: [`examples/playwright`](https://github.com/milon/bohurupee/tree/master/examples/playwright). PHP:
+[`examples/php`](https://github.com/milon/bohurupee/tree/master/examples/php).
 
 See also:
 
-- [curl examples](../examples/curl/README.md)
-- [provider profiles](provider-profiles.md)
+- [curl examples](https://github.com/milon/bohurupee/tree/master/examples/curl)
+- [Configuration](configuration.md)
+- [Endpoints and CLI](endpoints.md)
+- [Provider profiles](provider-profiles.md)
 - [Laravel Socialite adapter](socialite.md)

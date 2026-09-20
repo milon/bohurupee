@@ -62,6 +62,15 @@ the binary exits.
 Do not reintroduce `ids:` on the GoReleaser `homebrew_casks` block; that
 broke cask archive binding on `v0.2.0`.
 
+The GitHub Pages site is MkDocs Material. Content lives in `docs/`. See the
+[Contributing](https://milon.github.io/bohurupee/contributing/) page on the
+docs site for the same guide as `docs/contributing.md`.
+
+```bash
+pip install -r docs/requirements.txt
+mkdocs serve
+```
+
 ## Add a response template
 
 Built-in shapes live in `internal/profiles/templates.go`. A template adds

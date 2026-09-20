@@ -16,6 +16,8 @@ not need it, or Go, to use the server.
 **DEV ONLY.** Listens on loopback unless you override that on purpose. See
 [SECURITY.md](SECURITY.md).
 
+**Docs:** [milon.github.io/bohurupee](https://milon.github.io/bohurupee/)
+
 ## Install
 
 Download a release binary, install with Homebrew, run the container, or build
@@ -122,7 +124,8 @@ Alice signed in through `/google` is `google:alice`. The same person through
 Authorization-code clients that cannot do discovery can hard-code the three
 endpoints above. OIDC clients should use the discovery document. A worked
 example for Auth.js and other stacks is in
-[`docs/any-framework.md`](docs/any-framework.md). A copy-paste Auth.js
+[`docs/any-framework.md`](docs/any-framework.md) (also on the
+[docs site](https://milon.github.io/bohurupee/any-framework/)). A copy-paste Auth.js
 provider lives in [`examples/authjs`](examples/authjs).
 
 ### Sign in from a browser
