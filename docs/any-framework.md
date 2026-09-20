@@ -59,17 +59,34 @@ the secret is accepted but not validated.
 
 ## Auth.js
 
-Configure a custom OIDC provider. This illustrates the relevant Auth.js
-settings; place it inside the providers array used by your Auth.js version:
+Use the drop-in helper in [`examples/authjs`](../examples/authjs) (copy
+`provider.ts` into your app). It already sets discovery + PKCE:
+
+```ts
+import { Bohurupee } from "./bohurupee"
+
+export const { handlers, auth } = NextAuth({
+  providers: [
+    ...(process.env.NODE_ENV === "development"
+      ? [Bohurupee({ provider: "google" })]
+      : [/* your production provider */]),
+  ],
+})
+```
+
+Callback URL example: `http://localhost:3000/api/auth/callback/bohurupee`.
+Keep this provider in local development only.
+
+Equivalent inline config:
 
 ```ts
 {
   id: "bohurupee",
   name: "Bohurupee",
   type: "oidc",
-  issuer: "http://127.0.0.1:4190/acme",
+  issuer: "http://127.0.0.1:4190/google",
   wellKnown:
-    "http://127.0.0.1:4190/acme/.well-known/openid-configuration",
+    "http://127.0.0.1:4190/google/.well-known/openid-configuration",
   clientId: "authjs-local",
   clientSecret: "dev-secret",
   authorization: { params: { scope: "openid profile email" } },
@@ -85,8 +102,28 @@ settings; place it inside the providers array used by your Auth.js version:
 }
 ```
 
-Set these URLs only in local development. Keep the real provider configuration
-for production.
+Discovery, token, and userinfo allow CORS from loopback origins
+(`http://localhost:*`, `http://127.0.0.1:*`) so SPA clients on another local
+port work without a proxy.
+
+## Reload config
+
+Edit `bohurupee.yaml` and reload without restarting (loopback only):
+
+```bash
+curl -s -X POST http://127.0.0.1:4190/__reload
+```
+
+Personas, PKCE mode, `idToken`, provider profiles, and `refreshTokens` update
+in place. Listen address and signing keys do not. Bad YAML leaves the previous
+config running and returns an error JSON body.
+
+## Refresh tokens (opt-in)
+
+Default token responses are unchanged (no `refresh_token`). Set
+`refreshTokens: true` in YAML (then `POST /__reload` if the process is already
+up) to issue refresh tokens and advertise `refresh_token` in discovery.
+Exchange with `grant_type=refresh_token`.
 
 ## Generic framework checklist
 

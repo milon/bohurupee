@@ -35,7 +35,7 @@
           </li>
           {{end}}
         </ul>
-        <p class="hint">Append <code>?auto={{(index .Personas 0).ID}}</code> to skip the consent page.</p>
+        <p class="hint">Append <code>?auto={{(index .Personas 0).ID}}</code> to skip the consent page. After editing YAML, <code>POST {{.ReloadURL}}</code> (loopback only) without restarting.</p>
       </section>
 
       <section class="card">
@@ -47,6 +47,7 @@
           <li class="route"><span class="method">GET</span><code>/{provider}/.well-known/openid-configuration</code></li>
           <li class="route"><span class="method">GET</span><code>/{provider}/jwks</code></li>
           <li class="route"><span class="method">POST</span><code>/__login</code></li>
+          <li class="route"><span class="method">POST</span><code>/__reload</code></li>
         </ul>
         <p class="hint">Replace <code>{provider}</code> with any slug, such as <code>google</code> or <code>github</code>. Consent can <strong>Deny</strong>. Tests can <code>POST /__login</code> instead of <code>auto=</code>. <a href="{{.DiscoveryURL}}">Open Google discovery</a>.</p>
       </section>

@@ -56,6 +56,12 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
+	resolvedConfig := *configPath
+	if resolvedConfig == "" {
+		if _, err := os.Stat(config.DefaultPath); err == nil {
+			resolvedConfig = config.DefaultPath
+		}
+	}
 
 	host := cfg.Bind
 	listenPort := cfg.Port
@@ -91,13 +97,15 @@ func run(args []string) error {
 	}
 
 	srv, err := server.NewWithOptions(server.Options{
-		Addr:        addr,
-		AutoApprove: envTruthy("BOHURUPEE_AUTO_APPROVE"),
-		Personas:    cfg.Personas,
-		PKCE:        cfg.PKCE,
-		Signer:      signer,
-		IDToken:     cfg.IDToken,
-		Profiles:    cfg.Profiles,
+		Addr:          addr,
+		AutoApprove:   envTruthy("BOHURUPEE_AUTO_APPROVE"),
+		Personas:      cfg.Personas,
+		PKCE:          cfg.PKCE,
+		Signer:        signer,
+		IDToken:       cfg.IDToken,
+		Profiles:      cfg.Profiles,
+		ConfigPath:    resolvedConfig,
+		RefreshTokens: cfg.RefreshTokens,
 	})
 	if err != nil {
 		return err

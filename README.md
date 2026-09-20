@@ -115,7 +115,8 @@ Alice signed in through `/google` is `google:alice`. The same person through
 Authorization-code clients that cannot do discovery can hard-code the three
 endpoints above. OIDC clients should use the discovery document. A worked
 example for Auth.js and other stacks is in
-[`docs/any-framework.md`](docs/any-framework.md).
+[`docs/any-framework.md`](docs/any-framework.md). A copy-paste Auth.js
+provider lives in [`examples/authjs`](examples/authjs).
 
 ### Sign in from a browser
 
@@ -194,8 +195,16 @@ bohurupee init
 ```
 
 That writes `bohurupee.yaml`. Edit it, then start the server. It reads the
-file on startup. You do not rebuild to change people. `--config` writes or
-loads a different path. `--force` replaces a config that is already there.
+file on startup. You do not rebuild to change people. While the server is
+running, `POST /__reload` (loopback only) applies YAML changes without a
+restart:
+
+```bash
+curl -s -X POST http://127.0.0.1:4190/__reload
+```
+
+`--config` writes or loads a different path. `--force` replaces a config that
+is already there.
 
 If you would rather not run `init`, copy `bohurupee.example.yaml` to
 `bohurupee.yaml`. The two files start out the same.
@@ -205,6 +214,7 @@ port: 4190
 bind: 127.0.0.1
 pkce: optional          # optional | required | forbidden
 idToken: openid         # openid (only when scope has openid) | always
+# refreshTokens: true   # opt-in; off by default
 
 personas:
   - id: alice
@@ -231,6 +241,11 @@ providerProfiles:
 PKCE is optional by default. Set `pkce: required` when you want every
 authorize request to send a `code_challenge`. The token request must then
 include the matching `code_verifier`.
+
+Refresh tokens are **off by default**. With `refreshTokens: true`, code
+exchange includes `refresh_token`, discovery lists `refresh_token` as a
+supported grant, and `grant_type=refresh_token` issues a new access token.
+Default token JSON stays unchanged when the flag is omitted or false.
 
 ### Provider-shaped userinfo
 
@@ -305,11 +320,12 @@ is the same override inside the container.
 | Method       | Path                                           | Notes                                                                                                                                                                                                                    |
 |--------------|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `GET`        | `/{provider}/authorize`                        | `client_id`, `redirect_uri`, `response_type=code`, `state`. Consent, `?auto=<persona>`, or `?deny=1`. Failed requests with a valid `redirect_uri` return `?error=` (RFC 6749). `form_post` auto-posts `code` or `error`. |
-| `POST`       | `/{provider}/token`                            | Form body and/or HTTP Basic. `grant_type=authorization_code`. Errors are `{"error":"invalid_grant"}` (and friends). Send `code_verifier` when a PKCE challenge was used.                                                 |
-| `GET`        | `/{provider}/userinfo`                         | `Authorization: Bearer …`                                                                                                                                                                                                |
-| `GET`        | `/{provider}/.well-known/openid-configuration` | Issuer, authorize, token, userinfo, jwks                                                                                                                                                                                 |
+| `POST`       | `/{provider}/token`                            | Form body and/or HTTP Basic. `grant_type=authorization_code` (and `refresh_token` when enabled). Errors are `{"error":"invalid_grant"}` (and friends). Send `code_verifier` when a PKCE challenge was used. CORS for loopback origins. |
+| `GET`        | `/{provider}/userinfo`                         | `Authorization: Bearer …`. CORS for loopback origins.                                                                                                                                                                    |
+| `GET`        | `/{provider}/.well-known/openid-configuration` | Issuer, authorize, token, userinfo, jwks. CORS for loopback origins.                                                                                                                                                     |
 | `GET`        | `/{provider}/jwks`                             | JWKS. Alias: `/{provider}/auth/keys`                                                                                                                                                                                     |
 | `GET`/`POST` | `/__login`                                     | Test helper. `persona` (and optional `provider`). Sets a cookie so the next authorize skips consent.                                                                                                                     |
+| `POST`       | `/__reload`                                    | Loopback only. Reload YAML (personas, PKCE, profiles, refreshTokens) without restart.                                                                                                                                    |
 
 ## Security
 

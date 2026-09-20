@@ -3,6 +3,7 @@ bind: 127.0.0.1
 pkce: optional
 idToken: openid
 openClient: true
+# refreshTokens: true   # opt-in; off by default
 
 personas:
   - id: alice

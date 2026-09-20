@@ -19,6 +19,11 @@ func (s *Server) handleDiscovery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	iss := s.issuer(provider)
+	grants := []string{"authorization_code"}
+	_, _, _, _, refreshOn := s.snapshot()
+	if refreshOn {
+		grants = append(grants, "refresh_token")
+	}
 	doc := map[string]any{
 		"issuer":                                iss,
 		"authorization_endpoint":                iss + "/authorize",
@@ -32,7 +37,7 @@ func (s *Server) handleDiscovery(w http.ResponseWriter, r *http.Request) {
 		"scopes_supported":                      []string{"openid", "profile", "email"},
 		"code_challenge_methods_supported":      []string{"S256", "plain"},
 		"token_endpoint_auth_methods_supported": []string{"client_secret_basic", "client_secret_post", "none"},
-		"grant_types_supported":                 []string{"authorization_code"},
+		"grant_types_supported":                 grants,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")

@@ -67,6 +67,48 @@ func TestValidProvider(t *testing.T) {
 	}
 }
 
+func TestStoreRefreshOptIn(t *testing.T) {
+	t.Parallel()
+	s := NewStore(nil, 0, 0)
+	code, err := s.IssueCode(IssueCodeParams{Provider: "google", ClientID: "dev", RedirectURI: "http://127.0.0.1:9/cb", PersonaID: "alice", Scope: "openid"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.ExchangeCode("google", "dev", "http://127.0.0.1:9/cb", code, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Refresh != "" {
+		t.Fatal("refresh should be off by default")
+	}
+
+	s.SetRefreshEnabled(true)
+	code2, err := s.IssueCode(IssueCodeParams{Provider: "google", ClientID: "dev", RedirectURI: "http://127.0.0.1:9/cb", PersonaID: "alice", Scope: "openid"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err = s.ExchangeCode("google", "dev", "http://127.0.0.1:9/cb", code2, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Refresh == "" {
+		t.Fatal("expected refresh_token")
+	}
+	refreshed, err := s.RefreshAccess("google", "dev", got.Refresh)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refreshed.Access == "" || refreshed.Access == got.Access {
+		t.Fatalf("expected new access token: %#v", refreshed)
+	}
+	if refreshed.Refresh != got.Refresh {
+		t.Fatalf("refresh = %q want %q", refreshed.Refresh, got.Refresh)
+	}
+	if _, err := s.LookupToken("google", refreshed.Access); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestAliceUserinfoID(t *testing.T) {
 	t.Parallel()
 	info := Alice.Userinfo("google")

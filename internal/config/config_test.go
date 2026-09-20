@@ -77,6 +77,20 @@ func TestOverlayKeepsDefaultPersonas(t *testing.T) {
 	}
 }
 
+func TestRefreshTokensYAML(t *testing.T) {
+	t.Parallel()
+	cfg := Defaults()
+	if cfg.RefreshTokens {
+		t.Fatal("default refreshTokens should be false")
+	}
+	if err := overlayYAML(&cfg, []byte("refreshTokens: true\n")); err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.RefreshTokens {
+		t.Fatal("expected refreshTokens true")
+	}
+}
+
 func TestLoadRejectsEmptyPersonas(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "empty.yaml")

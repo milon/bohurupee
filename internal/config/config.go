@@ -14,13 +14,14 @@ import (
 const DefaultPath = "bohurupee.yaml"
 
 type File struct {
-	Port       int                    `yaml:"port"`
-	Bind       string                 `yaml:"bind"`
-	PKCE       string                 `yaml:"pkce"`
-	IDToken    string                 `yaml:"idToken"`
-	OpenClient *bool                  `yaml:"openClient"`
-	Personas   []filePersona          `yaml:"personas"`
-	Profiles   map[string]fileProfile `yaml:"providerProfiles"`
+	Port          int                    `yaml:"port"`
+	Bind          string                 `yaml:"bind"`
+	PKCE          string                 `yaml:"pkce"`
+	IDToken       string                 `yaml:"idToken"`
+	OpenClient    *bool                  `yaml:"openClient"`
+	RefreshTokens *bool                  `yaml:"refreshTokens"`
+	Personas      []filePersona          `yaml:"personas"`
+	Profiles      map[string]fileProfile `yaml:"providerProfiles"`
 }
 
 type fileProfile struct {
@@ -47,14 +48,15 @@ type filePersona struct {
 }
 
 type Config struct {
-	Port         int
-	Bind         string
-	BindFromFile bool
-	PKCE         oauth.PKCEMode
-	IDToken      oidc.IDTokenMode
-	OpenClient   bool
-	Personas     []oauth.Persona
-	Profiles     map[string]profiles.Profile
+	Port          int
+	Bind          string
+	BindFromFile  bool
+	PKCE          oauth.PKCEMode
+	IDToken       oidc.IDTokenMode
+	OpenClient    bool
+	RefreshTokens bool
+	Personas      []oauth.Persona
+	Profiles      map[string]profiles.Profile
 }
 
 func Defaults() Config {
@@ -119,6 +121,9 @@ func overlayYAML(cfg *Config, raw []byte) error {
 	}
 	if f.OpenClient != nil {
 		cfg.OpenClient = *f.OpenClient
+	}
+	if f.RefreshTokens != nil {
+		cfg.RefreshTokens = *f.RefreshTokens
 	}
 	if f.Personas != nil {
 		if len(f.Personas) == 0 {

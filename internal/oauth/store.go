@@ -9,17 +9,21 @@ import (
 )
 
 const (
-	DefaultCodeTTL  = 2 * time.Minute
-	DefaultTokenTTL = time.Hour
+	DefaultCodeTTL    = 2 * time.Minute
+	DefaultTokenTTL   = time.Hour
+	DefaultRefreshTTL = 24 * time.Hour
 )
 
 type Store struct {
-	mu       sync.Mutex
-	codes    map[string]*codeGrant
-	tokens   map[string]*accessToken
-	clock    Clock
-	codeTTL  time.Duration
-	tokenTTL time.Duration
+	mu             sync.Mutex
+	codes          map[string]*codeGrant
+	tokens         map[string]*accessToken
+	refresh        map[string]*refreshGrant
+	clock          Clock
+	codeTTL        time.Duration
+	tokenTTL       time.Duration
+	refreshTTL     time.Duration
+	refreshEnabled bool
 }
 
 type codeGrant struct {
@@ -41,6 +45,15 @@ type accessToken struct {
 	ExpiresAt time.Time
 }
 
+type refreshGrant struct {
+	Provider  string
+	PersonaID string
+	ClientID  string
+	Scope     string
+	Nonce     string
+	ExpiresAt time.Time
+}
+
 func NewStore(clock Clock, codeTTL, tokenTTL time.Duration) *Store {
 	if clock == nil {
 		clock = realClock{}
@@ -52,12 +65,22 @@ func NewStore(clock Clock, codeTTL, tokenTTL time.Duration) *Store {
 		tokenTTL = DefaultTokenTTL
 	}
 	return &Store{
-		codes:    make(map[string]*codeGrant),
-		tokens:   make(map[string]*accessToken),
-		clock:    clock,
-		codeTTL:  codeTTL,
-		tokenTTL: tokenTTL,
+		codes:      make(map[string]*codeGrant),
+		tokens:     make(map[string]*accessToken),
+		refresh:    make(map[string]*refreshGrant),
+		clock:      clock,
+		codeTTL:    codeTTL,
+		tokenTTL:   tokenTTL,
+		refreshTTL: DefaultRefreshTTL,
 	}
+}
+
+// SetRefreshEnabled toggles whether authorization_code exchanges issue a
+// refresh_token. Existing refresh grants stay usable until they expire.
+func (s *Store) SetRefreshEnabled(v bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.refreshEnabled = v
 }
 
 type IssueCodeParams struct {
@@ -94,6 +117,7 @@ func (s *Store) IssueCode(p IssueCodeParams) (string, error) {
 
 type ExchangeResult struct {
 	Access    string
+	Refresh   string
 	ExpiresIn int
 	PersonaID string
 	ClientID  string
@@ -134,6 +158,39 @@ func (s *Store) ExchangeCode(provider, clientID, redirectURI, code, verifier str
 	grant.Used = true
 	delete(s.codes, code)
 
+	return s.issueTokensLocked(now, provider, grant.PersonaID, grant.ClientID, grant.Scope, grant.Nonce, s.refreshEnabled)
+}
+
+// RefreshAccess exchanges a refresh_token for a new access token.
+func (s *Store) RefreshAccess(provider, clientID, refreshToken string) (ExchangeResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	grant, ok := s.refresh[refreshToken]
+	if !ok {
+		return ExchangeResult{}, fmt.Errorf("unknown refresh_token")
+	}
+	now := s.clock.Now()
+	if !now.Before(grant.ExpiresAt) {
+		delete(s.refresh, refreshToken)
+		return ExchangeResult{}, fmt.Errorf("refresh_token expired")
+	}
+	if grant.Provider != provider {
+		return ExchangeResult{}, fmt.Errorf("refresh_token issued for a different provider")
+	}
+	if grant.ClientID != clientID {
+		return ExchangeResult{}, fmt.Errorf("client_id mismatch")
+	}
+
+	ex, err := s.issueTokensLocked(now, provider, grant.PersonaID, grant.ClientID, grant.Scope, grant.Nonce, false)
+	if err != nil {
+		return ExchangeResult{}, err
+	}
+	ex.Refresh = refreshToken
+	return ex, nil
+}
+
+func (s *Store) issueTokensLocked(now time.Time, provider, personaID, clientID, scope, nonce string, withRefresh bool) (ExchangeResult, error) {
 	token, err := randomToken()
 	if err != nil {
 		return ExchangeResult{}, err
@@ -141,18 +198,34 @@ func (s *Store) ExchangeCode(provider, clientID, redirectURI, code, verifier str
 	ttl := s.tokenTTL
 	s.tokens[token] = &accessToken{
 		Provider:  provider,
-		PersonaID: grant.PersonaID,
+		PersonaID: personaID,
 		ExpiresAt: now.Add(ttl),
 	}
-	return ExchangeResult{
+	ex := ExchangeResult{
 		Access:    token,
 		ExpiresIn: int(ttl / time.Second),
-		PersonaID: grant.PersonaID,
-		ClientID:  grant.ClientID,
-		Provider:  grant.Provider,
-		Scope:     grant.Scope,
-		Nonce:     grant.Nonce,
-	}, nil
+		PersonaID: personaID,
+		ClientID:  clientID,
+		Provider:  provider,
+		Scope:     scope,
+		Nonce:     nonce,
+	}
+	if withRefresh {
+		rt, err := randomToken()
+		if err != nil {
+			return ExchangeResult{}, err
+		}
+		s.refresh[rt] = &refreshGrant{
+			Provider:  provider,
+			PersonaID: personaID,
+			ClientID:  clientID,
+			Scope:     scope,
+			Nonce:     nonce,
+			ExpiresAt: now.Add(s.refreshTTL),
+		}
+		ex.Refresh = rt
+	}
+	return ex, nil
 }
 
 func (s *Store) LookupToken(provider, token string) (personaID string, err error) {

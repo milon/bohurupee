@@ -31,6 +31,7 @@ type HomeData struct {
 	AuthorizeURL string
 	Curl         string
 	DiscoveryURL string
+	ReloadURL    string
 }
 
 type ConsentData struct {

@@ -52,25 +52,26 @@ func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, err := parseAuthRequest(r, s.pkce)
+	catalog, pkce, _, reg, _ := s.snapshot()
+	req, err := parseAuthRequest(r, pkce)
 	if err != nil {
 		s.writeAuthorizeError(w, req, err)
 		return
 	}
-	s.applyProfileDefaults(&req)
+	s.applyProfileDefaults(&req, reg)
 
 	if req.Deny {
 		s.finishAuthorize(w, req, "", "access_denied", "the user denied the request")
 		return
 	}
 
-	persona, err := s.resolvePersona(r, req.Auto)
+	persona, err := s.resolvePersona(r, req.Auto, catalog)
 	if err != nil {
 		s.writeAuthorizeError(w, req, err)
 		return
 	}
 	if persona == nil {
-		s.renderConsent(w, r, req)
+		s.renderConsent(w, r, req, catalog)
 		return
 	}
 
@@ -148,9 +149,9 @@ func parseAuthRequest(r *http.Request, pkce oauth.PKCEMode) (authRequest, error)
 	return req, nil
 }
 
-func (s *Server) applyProfileDefaults(req *authRequest) {
+func (s *Server) applyProfileDefaults(req *authRequest, reg *profiles.Registry) {
 	if req.ResponseMode == "" {
-		if p, ok := s.profiles.Get(req.Provider); ok && p.Protocol.ResponseMode != "" {
+		if p, ok := reg.Get(req.Provider); ok && p.Protocol.ResponseMode != "" {
 			req.ResponseMode = p.Protocol.ResponseMode
 		} else {
 			req.ResponseMode = "query"
@@ -158,22 +159,22 @@ func (s *Server) applyProfileDefaults(req *authRequest) {
 	}
 }
 
-func (s *Server) resolvePersona(r *http.Request, auto string) (*oauth.Persona, error) {
+func (s *Server) resolvePersona(r *http.Request, auto string, catalog *oauth.Catalog) (*oauth.Persona, error) {
 	if auto != "" {
-		p, ok := s.catalog.Lookup(auto)
+		p, ok := catalog.Lookup(auto)
 		if !ok {
 			return nil, authError{Redirect: true, Code: "invalid_request", Desc: fmt.Sprintf("unknown persona %q", auto)}
 		}
 		return &p, nil
 	}
 	if s.autoApprove {
-		p := s.catalog.Default()
+		p := catalog.Default()
 		return &p, nil
 	}
 	if c, err := r.Cookie(autoCookie); err == nil {
 		id := strings.TrimSpace(c.Value)
 		if id != "" {
-			p, ok := s.catalog.Lookup(id)
+			p, ok := catalog.Lookup(id)
 			if !ok {
 				return nil, authError{Redirect: true, Code: "invalid_request", Desc: fmt.Sprintf("unknown persona %q", id)}
 			}
@@ -183,10 +184,10 @@ func (s *Server) resolvePersona(r *http.Request, auto string) (*oauth.Persona, e
 	return nil, nil
 }
 
-func (s *Server) renderConsent(w http.ResponseWriter, r *http.Request, req authRequest) {
+func (s *Server) renderConsent(w http.ResponseWriter, r *http.Request, req authRequest, catalog *oauth.Catalog) {
 	last := ""
 	if c, err := r.Cookie(personaCookie); err == nil {
-		if _, ok := s.catalog.Lookup(c.Value); ok {
+		if _, ok := catalog.Lookup(c.Value); ok {
 			last = c.Value
 		}
 	}
@@ -195,7 +196,7 @@ func (s *Server) renderConsent(w http.ResponseWriter, r *http.Request, req authR
 	if err := s.ui.WriteConsent(w, ui.ConsentData{
 		Provider: req.Provider,
 		Query:    r.URL.Query(),
-		Personas: s.catalog.All(),
+		Personas: catalog.All(),
 		LastID:   last,
 	}); err != nil {
 		http.Error(w, "template error", http.StatusInternalServerError)
@@ -213,13 +214,11 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	catalog, _, idToken, reg, refreshOn := s.snapshot()
+
 	grantType := r.PostFormValue("grant_type")
 	if grantType == "" {
 		grantType = r.FormValue("grant_type")
-	}
-	if grantType != "authorization_code" {
-		writeTokenError(w, http.StatusBadRequest, "unsupported_grant_type", "grant_type must be authorization_code")
-		return
 	}
 
 	clientID, _, err := clientCredentials(r)
@@ -232,38 +231,65 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code := firstForm(r, "code")
-	redirectURI := firstForm(r, "redirect_uri")
-	verifier := firstForm(r, "code_verifier")
-	if code == "" {
-		writeTokenError(w, http.StatusBadRequest, "invalid_request", "missing code")
-		return
-	}
-	if redirectURI == "" {
-		writeTokenError(w, http.StatusBadRequest, "invalid_request", "missing redirect_uri")
-		return
-	}
-
-	ex, err := s.store.ExchangeCode(provider, clientID, redirectURI, code, verifier)
-	if err != nil {
-		writeTokenError(w, http.StatusBadRequest, "invalid_grant", err.Error())
+	var ex oauth.ExchangeResult
+	switch grantType {
+	case "authorization_code":
+		code := firstForm(r, "code")
+		redirectURI := firstForm(r, "redirect_uri")
+		verifier := firstForm(r, "code_verifier")
+		if code == "" {
+			writeTokenError(w, http.StatusBadRequest, "invalid_request", "missing code")
+			return
+		}
+		if redirectURI == "" {
+			writeTokenError(w, http.StatusBadRequest, "invalid_request", "missing redirect_uri")
+			return
+		}
+		ex, err = s.store.ExchangeCode(provider, clientID, redirectURI, code, verifier)
+		if err != nil {
+			writeTokenError(w, http.StatusBadRequest, "invalid_grant", err.Error())
+			return
+		}
+	case "refresh_token":
+		if !refreshOn {
+			writeTokenError(w, http.StatusBadRequest, "unsupported_grant_type", "grant_type must be authorization_code")
+			return
+		}
+		rt := firstForm(r, "refresh_token")
+		if rt == "" {
+			writeTokenError(w, http.StatusBadRequest, "invalid_request", "missing refresh_token")
+			return
+		}
+		ex, err = s.store.RefreshAccess(provider, clientID, rt)
+		if err != nil {
+			writeTokenError(w, http.StatusBadRequest, "invalid_grant", err.Error())
+			return
+		}
+	default:
+		msg := "grant_type must be authorization_code"
+		if refreshOn {
+			msg = "grant_type must be authorization_code or refresh_token"
+		}
+		writeTokenError(w, http.StatusBadRequest, "unsupported_grant_type", msg)
 		return
 	}
 
 	resp := struct {
-		AccessToken string `json:"access_token"`
-		TokenType   string `json:"token_type"`
-		ExpiresIn   int    `json:"expires_in"`
-		IDToken     string `json:"id_token,omitempty"`
-		Scope       string `json:"scope,omitempty"`
+		AccessToken  string `json:"access_token"`
+		TokenType    string `json:"token_type"`
+		ExpiresIn    int    `json:"expires_in"`
+		RefreshToken string `json:"refresh_token,omitempty"`
+		IDToken      string `json:"id_token,omitempty"`
+		Scope        string `json:"scope,omitempty"`
 	}{
-		AccessToken: ex.Access,
-		TokenType:   "Bearer",
-		ExpiresIn:   ex.ExpiresIn,
-		Scope:       ex.Scope,
+		AccessToken:  ex.Access,
+		TokenType:    "Bearer",
+		ExpiresIn:    ex.ExpiresIn,
+		RefreshToken: ex.Refresh,
+		Scope:        ex.Scope,
 	}
-	if s.wantIDToken(provider, ex.Scope) {
-		persona, ok := s.catalog.Lookup(ex.PersonaID)
+	if wantIDToken(provider, ex.Scope, idToken, reg) {
+		persona, ok := catalog.Lookup(ex.PersonaID)
 		if !ok {
 			writeTokenError(w, http.StatusInternalServerError, "server_error", "unknown persona")
 			return
@@ -310,7 +336,8 @@ func (s *Server) handleUserinfo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
-	persona, ok := s.catalog.Lookup(personaID)
+	catalog, _, _, reg, _ := s.snapshot()
+	persona, ok := catalog.Lookup(personaID)
 	if !ok {
 		http.Error(w, "unknown persona", http.StatusInternalServerError)
 		return
@@ -318,19 +345,15 @@ func (s *Server) handleUserinfo(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	_ = json.NewEncoder(w).Encode(s.userinfoBody(provider, persona))
+	p, _ := reg.Get(provider)
+	_ = json.NewEncoder(w).Encode(profiles.Render(provider, persona, p))
 }
 
-func (s *Server) userinfoBody(provider string, persona oauth.Persona) map[string]any {
-	p, _ := s.profiles.Get(provider)
-	return profiles.Render(provider, persona, p)
-}
-
-func (s *Server) wantIDToken(provider, scope string) bool {
-	if p, ok := s.profiles.Get(provider); ok && p.Protocol.IDToken {
+func wantIDToken(provider, scope string, mode oidc.IDTokenMode, reg *profiles.Registry) bool {
+	if p, ok := reg.Get(provider); ok && p.Protocol.IDToken {
 		return true
 	}
-	return oidc.WantIDToken(s.idToken, scope)
+	return oidc.WantIDToken(mode, scope)
 }
 
 func clientCredentials(r *http.Request) (id, secret string, err error) {
@@ -415,7 +438,8 @@ func (s *Server) writeAuthorizeError(w http.ResponseWriter, req authRequest, err
 }
 
 func (s *Server) finishAuthorize(w http.ResponseWriter, req authRequest, code, errCode, errDesc string) {
-	s.applyProfileDefaults(&req)
+	_, _, _, reg, _ := s.snapshot()
+	s.applyProfileDefaults(&req, reg)
 	w.Header().Set("Cache-Control", "no-store")
 	if req.ResponseMode == "form_post" {
 		html, err := s.ui.RenderFormPost(ui.FormPostData{
@@ -475,7 +499,8 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeTokenError(w, http.StatusBadRequest, "invalid_request", "invalid provider")
 		return
 	}
-	p, ok := s.catalog.Lookup(personaID)
+	catalog, _, _, _, _ := s.snapshot()
+	p, ok := catalog.Lookup(personaID)
 	if !ok {
 		writeTokenError(w, http.StatusBadRequest, "invalid_request", fmt.Sprintf("unknown persona %q", personaID))
 		return

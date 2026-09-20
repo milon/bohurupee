@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/milon/bohurupee/assets"
@@ -15,31 +16,36 @@ import (
 )
 
 type Options struct {
-	Addr        listen.Addr
-	AutoApprove bool
-	Clock       oauth.Clock
-	CodeTTL     time.Duration
-	TokenTTL    time.Duration
-	Personas    []oauth.Persona
-	PKCE        oauth.PKCEMode
-	Signer      *oidc.Signer
-	IDToken     oidc.IDTokenMode
-	Profiles    map[string]profiles.Profile
+	Addr          listen.Addr
+	AutoApprove   bool
+	Clock         oauth.Clock
+	CodeTTL       time.Duration
+	TokenTTL      time.Duration
+	Personas      []oauth.Persona
+	PKCE          oauth.PKCEMode
+	Signer        *oidc.Signer
+	IDToken       oidc.IDTokenMode
+	Profiles      map[string]profiles.Profile
+	ConfigPath    string
+	RefreshTokens bool
 }
 
 type Server struct {
-	Addr        listen.Addr
-	mux         *http.ServeMux
-	ui          *ui.Templates
-	store       *oauth.Store
-	catalog     *oauth.Catalog
-	autoApprove bool
-	pkce        oauth.PKCEMode
-	clock       oauth.Clock
-	tokenTTL    time.Duration
-	signer      *oidc.Signer
-	idToken     oidc.IDTokenMode
-	profiles    *profiles.Registry
+	Addr          listen.Addr
+	mux           *http.ServeMux
+	ui            *ui.Templates
+	store         *oauth.Store
+	mu            sync.RWMutex
+	catalog       *oauth.Catalog
+	autoApprove   bool
+	pkce          oauth.PKCEMode
+	clock         oauth.Clock
+	tokenTTL      time.Duration
+	signer        *oidc.Signer
+	idToken       oidc.IDTokenMode
+	profiles      *profiles.Registry
+	configPath    string
+	refreshTokens bool
 }
 
 func New(addr listen.Addr) (*Server, error) {
@@ -83,24 +89,29 @@ func NewWithOptions(opts Options) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	store := oauth.NewStore(opts.Clock, opts.CodeTTL, tokenTTL)
+	store.SetRefreshEnabled(opts.RefreshTokens)
 	s := &Server{
-		Addr:        opts.Addr,
-		mux:         http.NewServeMux(),
-		ui:          pages,
-		store:       oauth.NewStore(opts.Clock, opts.CodeTTL, tokenTTL),
-		catalog:     catalog,
-		autoApprove: opts.AutoApprove,
-		pkce:        pkce,
-		clock:       opts.Clock,
-		tokenTTL:    tokenTTL,
-		signer:      signer,
-		idToken:     idToken,
-		profiles:    reg,
+		Addr:          opts.Addr,
+		mux:           http.NewServeMux(),
+		ui:            pages,
+		store:         store,
+		catalog:       catalog,
+		autoApprove:   opts.AutoApprove,
+		pkce:          pkce,
+		clock:         opts.Clock,
+		tokenTTL:      tokenTTL,
+		signer:        signer,
+		idToken:       idToken,
+		profiles:      reg,
+		configPath:    opts.ConfigPath,
+		refreshTokens: opts.RefreshTokens,
 	}
 	s.mux.HandleFunc("GET /{$}", s.handleHome)
 	s.mux.HandleFunc("GET /favicon.svg", s.handleFavicon)
 	s.mux.HandleFunc("GET /__login", s.handleLogin)
 	s.mux.HandleFunc("POST /__login", s.handleLogin)
+	s.mux.HandleFunc("POST /__reload", s.handleReload)
 	s.mux.HandleFunc("GET /{provider}/authorize", s.handleAuthorize)
 	s.mux.HandleFunc("POST /{provider}/token", s.handleToken)
 	s.mux.HandleFunc("GET /{provider}/userinfo", s.handleUserinfo)
@@ -114,7 +125,7 @@ func NewWithOptions(opts Options) (*Server, error) {
 }
 
 func (s *Server) Handler() http.Handler {
-	return s.mux
+	return corsLoopback(s.mux)
 }
 
 func (s *Server) handleHome(w http.ResponseWriter, _ *http.Request) {
@@ -122,14 +133,16 @@ func (s *Server) handleHome(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	base := s.Addr.DisplayURL()
 	authorize, curlCmd := homeSnippets(base)
+	catalog, _, _, _, _ := s.snapshot()
 	data := ui.HomeData{
 		Listen:       s.Addr.String(),
 		URL:          base,
 		Version:      version.String(),
-		Personas:     s.catalog.All(),
+		Personas:     catalog.All(),
 		AuthorizeURL: authorize,
 		Curl:         curlCmd,
 		DiscoveryURL: base + "/google/.well-known/openid-configuration",
+		ReloadURL:    base + "/__reload",
 	}
 	if err := s.ui.WriteHome(w, data); err != nil {
 		http.Error(w, "template error", http.StatusInternalServerError)
