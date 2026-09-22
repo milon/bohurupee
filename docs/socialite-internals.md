@@ -41,16 +41,12 @@ still exist; they are just not returned for wrapped names.
 
 ## `driver($name)`
 
-```
-Socialite::driver('google')
-        │
-        ▼
-BohurupeeFactory::driver()
-        │
-        ├─ shouldWrap('google')?  ──no──►  inner Socialite factory
-        │                                  (GithubProvider, GoogleProvider, …)
-        │
-        └─ yes ──► cache[name] ??= new BohurupeeProvider(...)
+```mermaid
+flowchart TD
+  A["Socialite::driver('google')"] --> B["BohurupeeFactory::driver()"]
+  B --> C{"shouldWrap('google')?"}
+  C -->|no| D["Inner Socialite factory<br/>GithubProvider, GoogleProvider, …"]
+  C -->|yes| E["cache[name] ??= new BohurupeeProvider(...)"]
 ```
 
 `shouldWrap`:
@@ -123,36 +119,25 @@ path is code → access token → userinfo. Bohurupee may still issue an
 
 ## Redirect → consent → callback
 
-```
-Browser                  Laravel                         Bohurupee
-  │                         │                                │
-  │  GET /login/google      │                                │
-  │────────────────────────►│  Socialite::driver('google')   │
-  │  302 Location:          │  ->redirect()                  │
-  │  {public}/google/authorize?…                             │
-  │◄────────────────────────│                                │
-  │                         │                                │
-  │  GET /google/authorize  │                                │
-  │─────────────────────────────────────────────────────────►│
-  │  consent HTML (or auto= / cookie)                        │
-  │◄─────────────────────────────────────────────────────────│
-  │  302 redirect_uri?code=&state=                           │
-  │  (or error=access_denied)                                │
-  │◄─────────────────────────────────────────────────────────│
-  │                         │                                │
-  │  GET /auth/google/callback?code=                         │
-  │────────────────────────►│  ->user()                      │
-  │                         │  POST {base}/google/token      │
-  │                         │───────────────────────────────►│
-  │                         │  { access_token }              │
-  │                         │◄───────────────────────────────│
-  │                         │  GET {base}/google/userinfo    │
-  │                         │  Authorization: Bearer …       │
-  │                         │───────────────────────────────►│
-  │                         │  persona JSON                  │
-  │                         │◄───────────────────────────────│
-  │  app handles Socialite User                              │
-  │◄────────────────────────│                                │
+```mermaid
+sequenceDiagram
+  actor Browser
+  participant Laravel
+  participant Bohurupee
+
+  Browser->>Laravel: GET /login/google
+  Note over Laravel: Socialite::driver('google')->redirect()
+  Laravel-->>Browser: 302 Location {public}/google/authorize?…
+  Browser->>Bohurupee: GET /google/authorize
+  Bohurupee-->>Browser: consent HTML (or auto= / cookie)
+  Bohurupee-->>Browser: 302 redirect_uri?code=&state= (or error=access_denied)
+  Browser->>Laravel: GET /auth/google/callback?code=
+  Note over Laravel: user()
+  Laravel->>Bohurupee: POST {base}/google/token
+  Bohurupee-->>Laravel: access_token
+  Laravel->>Bohurupee: GET {base}/google/userinfo Authorization Bearer
+  Bohurupee-->>Laravel: persona JSON
+  Laravel-->>Browser: Socialite User
 ```
 
 Bohurupee is an open local client: the token endpoint accepts the
@@ -170,8 +155,11 @@ memory and disappears when `bohurupee` exits.
 
 Authorization codes, access tokens, and refresh tokens are the same shape:
 
-```text
-crypto/rand → 32 bytes → hex encode → 64-character string
+```mermaid
+flowchart LR
+  A[crypto/rand] --> B[32 bytes]
+  B --> C[hex encode]
+  C --> D[64-character string]
 ```
 
 They are **lookup keys**, not signed objects. Userinfo does not parse the
@@ -273,15 +261,16 @@ against JWKS.
 
 No new token is created here. The bearer is only a map key.
 
-```
-authorize ──► code (2 min, one shot, in-memory)
-                │
-                ▼
-token POST ──► access_token (1 h, in-memory hex)
-            └► id_token    (RS256 JWT, not stored)
-            └► refresh     (optional, 24 h)
-
-userinfo ──► lookup access_token → persona JSON
+```mermaid
+flowchart TD
+  A[authorize] --> B["code: 2 min, one shot, in-memory"]
+  B --> C[token POST]
+  C --> D["access_token: 1 h, in-memory hex"]
+  C --> E["id_token: RS256 JWT, not stored"]
+  C --> F["refresh: optional, 24 h"]
+  D --> G[userinfo]
+  G --> H[lookup access_token]
+  H --> I[persona JSON]
 ```
 
 ## `user()` and Deny
