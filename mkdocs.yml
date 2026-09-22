@@ -59,6 +59,7 @@ nav:
     - Any framework: any-framework.md
     - Provider profiles: provider-profiles.md
     - Laravel Socialite: socialite.md
+    - How the Laravel adapter works: socialite-internals.md
   - Project:
     - Security: security.md
     - Contributing: contributing.md

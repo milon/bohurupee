@@ -101,6 +101,9 @@ With `refreshTokens: true`, a `refresh_token` field is added.
 
 Errors are JSON: `{"error":"invalid_grant","error_description":"…"}`.
 
+How codes, access tokens, refresh tokens, and `id_token` are generated:
+[How the Laravel adapter works — How the binary issues tokens](socialite-internals.md#how-the-binary-issues-tokens).
+
 ### Refresh grant (opt-in)
 
 Requires `refreshTokens: true` in YAML.

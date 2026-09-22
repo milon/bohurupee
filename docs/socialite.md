@@ -129,3 +129,9 @@ vendor/bin/phpunit
 Browser tests can skip consent with
 [`examples/playwright`](https://github.com/milon/bohurupee/tree/master/examples/playwright) (`loginAs(context, 'alice', 'google')`)
 or [`examples/php`](https://github.com/milon/bohurupee/tree/master/examples/php).
+
+## Internals
+
+How the factory wrap, public vs server URL, `AbstractProvider` hooks, Deny,
+userinfo mapping, and how the Go binary mints codes and tokens:
+[How the Laravel adapter works](socialite-internals.md).
