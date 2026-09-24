@@ -38,7 +38,7 @@ the binary exits.
 | **`encoding/json`** (stdlib) | Token and userinfo JSON. |
 | **`net/url`** (stdlib) | `code` and `state` on `redirect_uri`. |
 | **`sync` / `time`** (stdlib) | In-memory grant store. Codes last 2 minutes. Tokens last 1 hour. |
-| **GoReleaser** | `.goreleaser.yaml` publishes darwin, linux, and windows archives, plus a multi-arch scratch image, on a `v*` tag. The release workflow then copies the rendered Homebrew cask into [milon/homebrew-bohurupee](https://github.com/milon/homebrew-bohurupee). |
+| **GoReleaser** | `.goreleaser.yaml` publishes darwin, linux, and windows archives, plus a multi-arch scratch image, on a `v*` tag. The release workflow then renders the Homebrew 7 cask from `dist/checksums.txt` (`scripts/render-homebrew-cask.sh`) and copies it into [milon/homebrew-bohurupee](https://github.com/milon/homebrew-bohurupee). |
 
 ## Release
 
@@ -60,7 +60,10 @@ the binary exits.
    older tag.
 
 Do not reintroduce `ids:` on the GoReleaser `homebrew_casks` block; that
-broke cask archive binding on `v0.2.0`.
+broke cask archive binding on `v0.2.0`. The tap cask is Homebrew 7 DSL
+(`arch`/`os`/`sha256`/`postflight_steps`); generate it with
+`scripts/render-homebrew-cask.sh` instead of copying GoReleaser's nested
+`on_macos`/`postflight` output.
 
 The GitHub Pages site is MkDocs Material. Content lives in `docs/`. See the
 [Contributing](https://milon.github.io/bohurupee/contributing/) page on the

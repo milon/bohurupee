@@ -103,7 +103,10 @@ working examples under `examples/` with full GitHub URLs.
 4. Refresh README install version pins if they still name an older tag.
 
 Do **not** reintroduce `ids:` on the GoReleaser `homebrew_casks` block — that
-broke cask archive binding on `v0.2.0`.
+broke cask archive binding on `v0.2.0`. The tap file is Homebrew 7 DSL
+(`arch`/`os`/`sha256`/`postflight_steps`); keep generating it with
+`scripts/render-homebrew-cask.sh` rather than copying GoReleaser's nested
+`on_macos`/`postflight` output.
 
 ## Security reports
 

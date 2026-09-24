@@ -24,6 +24,7 @@ and Packagist package agree.
 
 ### Fixed
 - Homebrew cask generation binds to release archives so a `v*` tag updates the tap
+- Homebrew tap uses Homebrew 7 cask syntax (`arch`/`os`/`postflight_steps`)
 
 ## [0.2.1] - 2026-09-19
 

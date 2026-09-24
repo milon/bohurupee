@@ -67,8 +67,10 @@ dockers_v2:
       org.opencontainers.image.version: "{{ .Version }}"
       org.opencontainers.image.revision: "{{ .FullCommit }}"
 
-# Rendered under dist/homebrew/Casks. The release workflow pushes that file
-# to github.com/milon/homebrew-bohurupee with a deploy key.
+# GoReleaser still emits a cask under dist/homebrew/Casks, but it uses nested
+# on_macos/on_linux blocks. The release workflow overwrites that file with
+# scripts/render-homebrew-cask.sh (Homebrew 7 arch/os/sha256/postflight_steps).
+# Do not reintroduce ids: here — that broke archive binding on v0.2.0.
 homebrew_casks:
   - name: bohurupee
     repository:
@@ -76,13 +78,9 @@ homebrew_casks:
       name: homebrew-bohurupee
     skip_upload: "true"
     homepage: "https://github.com/milon/bohurupee"
-    description: "Local fake identity provider for OAuth and OIDC development. DEV ONLY."
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/bohurupee"]
-          end
+    description: "Local fake identity provider for OAuth and OIDC development. DEV ONLY"
+    binaries:
+      - bohurupee
     caveats: "Bohurupee is a local fake identity provider. DEV ONLY. It listens on 127.0.0.1:4190."
 
 release:

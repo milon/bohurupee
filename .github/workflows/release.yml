@@ -95,12 +95,17 @@ jobs:
             echo "HOMEBREW_TAP_DEPLOY_KEY is not set; the tap was not updated." >&2
             exit 1
           fi
-          cask="dist/homebrew/Casks/bohurupee.rb"
-          if [[ ! -f "${cask}" ]]; then
-            echo "Cask was not rendered at ${cask}" >&2
+          checksums="dist/checksums.txt"
+          if [[ ! -f "${checksums}" ]]; then
+            echo "checksums were not written at ${checksums}" >&2
             find dist -type f >&2
             exit 1
           fi
+          cask="dist/homebrew/Casks/bohurupee.rb"
+          bash ./scripts/render-homebrew-cask.sh \
+            --version "${GITHUB_REF_NAME}" \
+            --checksums "${checksums}" \
+            --output "${cask}"
           install -d -m 700 "${HOME}/.ssh"
           printf '%s\n' "${DEPLOY_KEY}" > "${HOME}/.ssh/homebrew_tap"
           chmod 600 "${HOME}/.ssh/homebrew_tap"
