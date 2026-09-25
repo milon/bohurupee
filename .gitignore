@@ -33,5 +33,7 @@ bohurupee.code-workspace
 /bohurupee-oidc.key
 !/bohurupee.example.yaml
 
-# MkDocs
+# Papyrus
+/docs/export/
+/docs/.papyrus/
 /site/

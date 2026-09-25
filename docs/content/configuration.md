@@ -1,3 +1,7 @@
+---
+title: Configuration
+---
+
 # Configuration (`bohurupee.yaml`)
 
 Bohurupee loads YAML once at startup as a **sparse overlay** on the built-in
@@ -450,7 +454,7 @@ valid provider slug (same rules as persona `id`). Entries in your file
 **merge** into the stock profile for that slug; omitted slugs stay as
 defaults.
 
-See [Provider profiles](provider-profiles.md) for merge order and the full
+See [Provider profiles](provider-profiles.html) for merge order and the full
 template table. Summary of profile fields:
 
 ### `responseTemplate`
@@ -486,10 +490,11 @@ Extra paths. Today `userinfo` registers an alias on that provider:
       userinfo: /me    # also GET /facebook/me
 ```
 
-!!! note "Aliases and reload"
-    Userinfo alias routes are registered when the process starts. Adding a new
-    alias via reload updates rendering for existing routes; a **new** path may
-    need a process restart to appear on the mux.
+:::note
+Userinfo alias routes are registered when the process starts. Adding a new
+alias via reload updates rendering for existing routes; a **new** path may
+need a process restart to appear on the mux.
+:::
 
 ### `protocol`
 

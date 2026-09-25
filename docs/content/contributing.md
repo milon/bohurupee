@@ -1,3 +1,7 @@
+---
+title: Contributing
+---
+
 # Contributing
 
 Bohurupee is a local fake identity provider. Keep the default userinfo
@@ -30,7 +34,7 @@ PR. You do not need Go to *run* a release binary.
 | `internal/profiles` | Userinfo templates and merge |
 | `internal/config` | YAML loading |
 | `internal/ui` | Embedded HTML/CSS |
-| `docs/` | This documentation site |
+| `docs/content/` | This documentation site |
 | `examples/` | curl, Auth.js, Laravel, Playwright, … |
 
 ## Dependencies (why they exist)
@@ -56,30 +60,36 @@ fields on top of the generic persona. It does not replace `id`, `email`,
 2. Register it in the `templates` map (lowercase YAML key).
 3. Add assertions in `internal/profiles/render_test.go` (new fields **and**
    generic getters still present).
-4. Document a row in [Provider profiles](provider-profiles.md).
+4. Document a row in [Provider profiles](provider-profiles.html).
 5. Optionally add a `providerProfiles` entry in `bohurupee.example.yaml`.
 
 Unknown `responseTemplate` values are rejected at startup / reload.
 
 For a one-off shape, prefer YAML `response:` — no Go change required. See
-[Configuration](configuration.md) and [Provider profiles](provider-profiles.md).
+[Configuration](configuration.html) and [Provider profiles](provider-profiles.html).
 
 ## Docs site
 
-Content is MkDocs Material under `docs/`.
+The site is [milon/papyrus](https://github.com/milon/papyrus). Chapters live
+in `docs/content/`; config is `docs/papyrus.yml`.
 
 ```bash
-pip install -r docs/requirements.txt
-mkdocs serve
+composer install
+composer docs:serve
 ```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000/). Pushes to `master` that
-touch `docs/` or `mkdocs.yml` deploy via GitHub Pages
-(`.github/workflows/docs.yml`). Enable **Settings → Pages → GitHub Actions**
-once if needed.
+That runs `papyrus serve -d docs --build`. Open the printed URL (search needs
+a real HTTP origin). Pushes to `master` that touch `docs/`, `composer.json`,
+or `composer.lock` deploy via GitHub Pages (`.github/workflows/docs.yml`).
+Enable **Settings → Pages → GitHub Actions** once if needed.
+
+Mermaid diagrams (in [How the Laravel adapter works](socialite-internals.html))
+need `mmdc` on `PATH`. `papyrus doctor -d docs` reports if it is missing.
 
 Keep prose concrete and short. Prefer tables for option lists. Link to
-working examples under `examples/` with full GitHub URLs.
+working examples under `examples/` with full GitHub URLs. Use Papyrus
+callouts (`:::note` / `:::warning`) rather than MkDocs `!!!` admonitions.
+Chapter links should target the `.html` filename (`configuration.html`).
 
 ## Pull requests
 
@@ -112,4 +122,4 @@ broke cask archive binding on `v0.2.0`. The tap file is Homebrew 7 DSL
 
 Bohurupee is local / DEV ONLY. File ordinary
 [GitHub issues](https://github.com/milon/bohurupee/issues) for bugs. See
-[Security](security.md).
+[Security](security.html).

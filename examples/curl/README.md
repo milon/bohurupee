@@ -118,5 +118,5 @@ then includes an RS256 `id_token` that verifies against JWKS.
 With `--config ./bohurupee.example.yaml`, `/github/userinfo` includes
 `html_url` from the GitHub template. `/acme/userinfo` uses the default
 template (`login`, `username`, …) and does not include GitHub-only fields. See
-[`docs/provider-profiles.md`](../../docs/provider-profiles.md).
+[`docs/content/provider-profiles.md`](../../docs/content/provider-profiles.md).
 

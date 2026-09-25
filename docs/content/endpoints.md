@@ -1,3 +1,7 @@
+---
+title: Endpoints and CLI
+---
+
 # Endpoints and CLI
 
 Bohurupee speaks the OAuth 2.0 authorization-code flow and OpenID Connect
@@ -102,7 +106,7 @@ With `refreshTokens: true`, a `refresh_token` field is added.
 Errors are JSON: `{"error":"invalid_grant","error_description":"…"}`.
 
 How codes, access tokens, refresh tokens, and `id_token` are generated:
-[How the Laravel adapter works — How the binary issues tokens](socialite-internals.md#how-the-binary-issues-tokens).
+[How the Laravel adapter works — How the binary issues tokens](socialite-internals.html#how-the-binary-issues-tokens).
 
 ### Refresh grant (opt-in)
 
@@ -137,7 +141,7 @@ Returns the merged persona / profile JSON. Generic shape:
 ```
 
 Provider templates add fields (`login`, `avatar_url`, …). See
-[Provider profiles](provider-profiles.md).
+[Provider profiles](provider-profiles.html).
 
 ---
 

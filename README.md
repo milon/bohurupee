@@ -16,7 +16,7 @@ not need it, or Go, to use the server.
 **DEV ONLY.** Listens on loopback unless you override that on purpose. See
 [SECURITY.md](SECURITY.md).
 
-**Docs:** [milon.github.io/bohurupee](https://milon.github.io/bohurupee/)
+**Docs:** [bohurupee.milon.im](https://bohurupee.milon.im/)
 
 ## Install
 
@@ -135,8 +135,8 @@ Alice signed in through `/google` is `google:alice`. The same person through
 Authorization-code clients that cannot do discovery can hard-code the three
 endpoints above. OIDC clients should use the discovery document. A worked
 example for Auth.js and other stacks is in
-[`docs/any-framework.md`](docs/any-framework.md) (also on the
-[docs site](https://milon.github.io/bohurupee/any-framework/)). A copy-paste Auth.js
+[`docs/content/any-framework.md`](docs/content/any-framework.md) (also on the
+[docs site](https://bohurupee.milon.im/any-framework.html)). A copy-paste Auth.js
 provider lives in [`examples/authjs`](examples/authjs).
 
 ### Sign in from a browser
@@ -310,7 +310,7 @@ providerProfiles:
 ```
 
 Merge order, templates, and placeholders are in
-[`docs/provider-profiles.md`](docs/provider-profiles.md).
+[`docs/content/provider-profiles.md`](docs/content/provider-profiles.md).
 
 ### Laravel Socialite
 
@@ -318,7 +318,7 @@ Optional. Install `milon/bohurupee-laravel`, set `BOHURUPEE_ENABLED=true` and
 `BOHURUPEE_URL=http://127.0.0.1:4190`, and keep using
 `Socialite::driver('google')`. The driver name is the provider slug.
 Setup, the production guard, and a minimal app are in
-[`docs/socialite.md`](docs/socialite.md) and
+[`docs/content/socialite.md`](docs/content/socialite.md) and
 [`examples/laravel-socialite`](examples/laravel-socialite).
 
 ## Commands

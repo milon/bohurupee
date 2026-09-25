@@ -21,4 +21,4 @@ and `raw`). Deny (and other OAuth failures) are handled by
 `milon/bohurupee-laravel` as `OAuthErrorException` and returned as JSON
 `error` / `error_description` instead of Laravel’s exception page.
 
-Requires PHP 8.2+ and Composer. See [`docs/socialite.md`](../../docs/socialite.md).
+Requires PHP 8.2+ and Composer. See [`docs/content/socialite.md`](../../docs/content/socialite.md).

@@ -1,3 +1,7 @@
+---
+title: Security
+---
+
 # Security
 
 Bohurupee is a **DEV ONLY** fake identity provider. It is meant to run on
@@ -16,7 +20,7 @@ Docker: publish the host port on `127.0.0.1` only
 (`-p 127.0.0.1:4190:4190`).
 
 Config knobs such as `openClient`, `clients`, and `pkce` are documented in
-[Configuration](configuration.md).
+[Configuration](configuration.html).
 
 ## Bugs and reports
 

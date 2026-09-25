@@ -65,13 +65,14 @@ broke cask archive binding on `v0.2.0`. The tap cask is Homebrew 7 DSL
 `scripts/render-homebrew-cask.sh` instead of copying GoReleaser's nested
 `on_macos`/`postflight` output.
 
-The GitHub Pages site is MkDocs Material. Content lives in `docs/`. See the
-[Contributing](https://milon.github.io/bohurupee/contributing/) page on the
-docs site for the same guide as `docs/contributing.md`.
+The GitHub Pages site is [milon/papyrus](https://github.com/milon/papyrus).
+Content lives in `docs/content/` (`docs/papyrus.yml`). See the
+[Contributing](https://bohurupee.milon.im/contributing.html) page on the
+docs site for the same guide as `docs/content/contributing.md`.
 
 ```bash
-pip install -r docs/requirements.txt
-mkdocs serve
+composer install
+composer docs:serve
 ```
 
 ## Add a response template
@@ -85,10 +86,10 @@ fields on top of the generic persona. It does not replace `id`, `email`,
    `google`, …) and must be lowercase.
 3. Add a case in `internal/profiles/render_test.go`. Assert the new fields
    and that the generic getters are still present.
-4. Add a row to the table in `docs/provider-profiles.md`.
+4. Add a row to the table in `docs/content/provider-profiles.md`.
 5. Optionally add a `providerProfiles` entry in `bohurupee.example.yaml`.
 
 Unknown `responseTemplate` values are rejected at startup.
 
 You do not need a code change for a one-off shape. Set `response:` in
-`bohurupee.yaml` instead. See `docs/provider-profiles.md`.
+`bohurupee.yaml` instead. See `docs/content/provider-profiles.md`.

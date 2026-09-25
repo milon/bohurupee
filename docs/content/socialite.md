@@ -1,3 +1,7 @@
+---
+title: Laravel Socialite
+---
+
 # Laravel Socialite adapter
 
 Point Socialite at a local Bohurupee process so Google, GitHub, and custom
@@ -6,7 +10,7 @@ slugs never leave your machine.
 The adapter is a separate Composer package,
 [`milon/bohurupee-laravel`](https://packagist.org/packages/milon/bohurupee-laravel).
 It is optional: any other stack can use the same OAuth/OIDC server with
-[Any framework](any-framework.md).
+[Any framework](any-framework.html).
 
 ## Install
 
@@ -111,8 +115,8 @@ returns JSON for the Socialite user. Deny and other OAuth errors return JSON
 with `error` / `error_description` instead of Laravel’s exception page.
 
 Point Bohurupee personas and profiles with
-[Configuration](configuration.md). Provider-shaped GitHub userinfo needs a
-`github` profile — see [Provider profiles](provider-profiles.md).
+[Configuration](configuration.html). Provider-shaped GitHub userinfo needs a
+`github` profile — see [Provider profiles](provider-profiles.html).
 
 ## Tests
 
@@ -134,4 +138,4 @@ or [`examples/php`](https://github.com/milon/bohurupee/tree/master/examples/php)
 
 How the factory wrap, public vs server URL, `AbstractProvider` hooks, Deny,
 userinfo mapping, and how the Go binary mints codes and tokens:
-[How the Laravel adapter works](socialite-internals.md).
+[How the Laravel adapter works](socialite-internals.html).

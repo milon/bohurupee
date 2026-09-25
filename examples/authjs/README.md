@@ -32,5 +32,5 @@ local `client_id` / secret.
 Loopback CORS is enabled on discovery, token, and userinfo so a browser app on
 another localhost port can finish the code flow.
 
-See [`docs/any-framework.md`](../../docs/any-framework.md) for the same
+See [`docs/content/any-framework.md`](../../docs/content/any-framework.md) for the same
 provider inline.

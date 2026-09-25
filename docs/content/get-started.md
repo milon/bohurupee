@@ -1,3 +1,7 @@
+---
+title: Get started
+---
+
 # Get started
 
 ## Install
@@ -57,7 +61,7 @@ docker run --rm -v "$PWD:/work" -w /work ghcr.io/milon/bohurupee:v0.2.1 init
 
 ### From source
 
-Requires Go 1.25+. See [Contributing](contributing.md).
+Requires Go 1.25+. See [Contributing](contributing.html).
 
 ```bash
 git clone https://github.com/milon/bohurupee.git
@@ -81,10 +85,11 @@ http://127.0.0.1:4190/google/authorize?client_id=dev-client&redirect_uri=http%3A
 4. Your app exchanges `code` at `POST /google/token`, then calls
    `GET /google/userinfo` with the access token.
 
-!!! tip "Open client"
-    Any `client_id` and `client_secret` are accepted by default. Secrets are
-    not validated. See [`openClient` and `clients`](configuration.md#openclient)
-    if you want an allowlist.
+:::note
+Any `client_id` and `client_secret` are accepted by default. Secrets are
+not validated. See [`openClient` and `clients`](configuration.html#openclient)
+if you want an allowlist.
+:::
 
 ### Skip the consent page
 
@@ -130,11 +135,11 @@ Apply changes while the server is up:
 curl -s -X POST http://127.0.0.1:4190/__reload
 ```
 
-Every YAML key is documented in [Configuration](configuration.md). Routes and
-flags are in [Endpoints and CLI](endpoints.md).
+Every YAML key is documented in [Configuration](configuration.html). Routes and
+flags are in [Endpoints and CLI](endpoints.html).
 
 ## Wire your app
 
-- Generic OIDC / Auth.js → [Any framework](any-framework.md)
-- Laravel Socialite → [Laravel Socialite](socialite.md)
-- GitHub-shaped userinfo → [Provider profiles](provider-profiles.md)
+- Generic OIDC / Auth.js → [Any framework](any-framework.html)
+- Laravel Socialite → [Laravel Socialite](socialite.html)
+- GitHub-shaped userinfo → [Provider profiles](provider-profiles.html)

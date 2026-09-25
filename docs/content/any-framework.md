@@ -1,3 +1,7 @@
+---
+title: Any framework
+---
+
 # Use Bohurupee from any framework
 
 Bohurupee is a local OAuth 2.0 / OpenID Connect server. Your application only
@@ -153,7 +157,7 @@ Playwright: [`examples/playwright`](https://github.com/milon/bohurupee/tree/mast
 See also:
 
 - [curl examples](https://github.com/milon/bohurupee/tree/master/examples/curl)
-- [Configuration](configuration.md)
-- [Endpoints and CLI](endpoints.md)
-- [Provider profiles](provider-profiles.md)
-- [Laravel Socialite adapter](socialite.md)
+- [Configuration](configuration.html)
+- [Endpoints and CLI](endpoints.html)
+- [Provider profiles](provider-profiles.html)
+- [Laravel Socialite adapter](socialite.html)

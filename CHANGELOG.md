@@ -22,6 +22,9 @@ and Packagist package agree.
 - Optional per-client `redirect_uris` (`clients` in YAML)
 - `SECURITY.md`, GitHub issue templates, and `golangci-lint` in CI
 
+### Changed
+- Documentation site builds with [milon/papyrus](https://github.com/milon/papyrus) instead of MkDocs Material
+
 ### Fixed
 - Homebrew cask generation binds to release archives so a `v*` tag updates the tap
 - Homebrew tap uses Homebrew 7 cask syntax (`arch`/`os`/`postflight_steps`)

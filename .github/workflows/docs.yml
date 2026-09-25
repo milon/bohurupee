@@ -5,7 +5,14 @@ on:
     branches: [master]
     paths:
       - "docs/**"
-      - "mkdocs.yml"
+      - "composer.json"
+      - "composer.lock"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    paths:
+      - "docs/**"
+      - "composer.json"
+      - "composer.lock"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
@@ -22,25 +29,53 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: shivammathur/setup-php@v2
         with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: docs/requirements.txt
+          php-version: "8.2"
+          extensions: dom, gd, mbstring, zip, zlib
+          coverage: none
+          tools: composer:v2
 
-      - name: Install
-        run: pip install -r docs/requirements.txt
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
 
-      - name: Build
-        run: mkdocs build --strict
+      - name: Install Chromium for Mermaid
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v2
+
+      - name: Install mermaid-cli
+        run: npm install --global @mermaid-js/mermaid-cli
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Build documentation site
+        env:
+          PUPPETEER_EXECUTABLE_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${PUPPETEER_EXECUTABLE_PATH:-}" ]]; then
+            for candidate in google-chrome chrome chromium chromium-browser; do
+              if command -v "$candidate" >/dev/null 2>&1; then
+                export PUPPETEER_EXECUTABLE_PATH="$(command -v "$candidate")"
+                break
+              fi
+            done
+          fi
+          echo "Using Chrome at: ${PUPPETEER_EXECUTABLE_PATH:-not set}"
+          vendor/bin/papyrus build:site -d docs
+          test -f docs/export/bohurupee-site/index.html
+          test -f docs/export/bohurupee-site/404.html
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: docs/export/bohurupee-site
 
   deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     needs: build
     runs-on: ubuntu-latest
     environment:

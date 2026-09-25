@@ -1,3 +1,7 @@
+---
+title: Provider profiles
+---
+
 # Provider profiles
 
 Every slug returns the generic persona fields (`id`, `sub`, `email`,
@@ -114,4 +118,4 @@ Used as **defaults** when the authorize query omits the matching parameter:
 The client can still pass `response_mode=query` explicitly.
 
 YAML field reference for `providerProfiles` (and every other key) lives in
-[Configuration](configuration.md#providerprofiles).
+[Configuration](configuration.html#providerprofiles).

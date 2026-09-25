@@ -1,7 +1,11 @@
+---
+title: How the Laravel adapter works
+---
+
 # How the Laravel adapter works
 
 This is the internals of [`milon/bohurupee-laravel`](https://packagist.org/packages/milon/bohurupee-laravel).
-Install and env vars are on [Laravel Socialite](socialite.md). The Go server
+Install and env vars are on [Laravel Socialite](socialite.html). The Go server
 is a separate process; this package never embeds it.
 
 The adapter does **not** add routes, change `config/services.php`, or
@@ -257,7 +261,7 @@ against JWKS.
 1. `Store.LookupToken` — unknown, expired, or wrong provider → `401`.
 2. Load that persona from the YAML catalog.
 3. `profiles.Render` (generic → template → profile `response` → persona
-   overlay). See [Provider profiles](provider-profiles.md).
+   overlay). See [Provider profiles](provider-profiles.html).
 
 No new token is created here. The bearer is only a map key.
 
@@ -317,7 +321,7 @@ The JSON body is decoded as an array (empty array on failure).
 
 Nested `picture.data.url` is Facebook-shaped. String `picture` is Google /
 OIDC. The mapper does not know the slug; shape comes from Bohurupee's
-[provider profiles](provider-profiles.md).
+[provider profiles](provider-profiles.html).
 
 ## What stays native
 

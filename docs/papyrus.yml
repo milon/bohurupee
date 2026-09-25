@@ -1,0 +1,56 @@
+title: Bohurupee
+subtitle: Local fake identity provider for OAuth and OIDC development
+author: milon
+themes:
+  - light
+  - dark
+
+document:
+  size: a4
+  margin_left: 25
+  margin_right: 25
+  margin_top: 20
+  margin_bottom: 20
+
+toc:
+  h1: 0
+  h2: 0
+  h3: 1
+
+site:
+  banner: banner.svg
+  lead: Local fake identity provider for social login development. Point any OAuth or OIDC client at http://127.0.0.1:4190 — nothing leaves your machine.
+  cname: bohurupee.milon.im
+  repository: https://github.com/milon/bohurupee
+  edit:
+    link: true
+    path: docs/content
+    branch: master
+  links:
+    - { label: GitHub, url: https://github.com/milon/bohurupee }
+    - { label: Homebrew tap, url: https://github.com/milon/homebrew-bohurupee }
+    - { label: Laravel adapter, url: https://packagist.org/packages/milon/bohurupee-laravel }
+  nav:
+    - group: Guides
+      chapters:
+        - welcome.md
+        - get-started.md
+        - configuration.md
+        - endpoints.md
+        - any-framework.md
+        - provider-profiles.md
+        - socialite.md
+        - socialite-internals.md
+    - group: Project
+      chapters:
+        - security.md
+        - contributing.md
+
+header:
+  style: "font-style: italic; text-align: right; border-bottom: solid 1px #808080;"
+
+mermaid:
+  enabled: true
+  format: svg
+  theme: auto
+  max_width_mm: 130
