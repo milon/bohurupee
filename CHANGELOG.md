@@ -23,7 +23,7 @@ and Packagist package agree.
 - `SECURITY.md`, GitHub issue templates, and `golangci-lint` in CI
 
 ### Changed
-- Documentation site builds with [milon/papyrus](https://github.com/milon/papyrus) instead of MkDocs Material
+- Documentation site builds with [milon/papyrus](https://github.com/milon/papyrus) 1.5.0 (`papyrus.phar`; no Composer dep)
 
 ### Fixed
 - Homebrew cask generation binds to release archives so a `v*` tag updates the tap

@@ -1,3 +1,5 @@
+# Bohurupee docs site (milon/papyrus ^1.5).
+# CI installs Papyrus via the v1.5.0 release PHAR (see .github/workflows/docs.yml).
 title: Bohurupee
 subtitle: Local fake identity provider for OAuth and OIDC development
 author: milon

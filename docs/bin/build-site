@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+PAPYRUS_BIN="${PAPYRUS_BIN:-}"
+
+# PAPYRUS_BIN may be a path or a command string (e.g. "php /path/papyrus.phar").
+run_papyrus() {
+  # shellcheck disable=SC2086
+  eval "$PAPYRUS_BIN" "$@"
+}
+
+if [[ -z "$PAPYRUS_BIN" ]]; then
+  if [[ -x "$ROOT/papyrus.phar" ]]; then
+    PAPYRUS_BIN="php $ROOT/papyrus.phar"
+  elif command -v papyrus >/dev/null 2>&1; then
+    PAPYRUS_BIN="$(command -v papyrus)"
+  elif [[ -x "$ROOT/../papyrus/bin/papyrus" ]]; then
+    PAPYRUS_BIN="$ROOT/../papyrus/bin/papyrus"
+  else
+    echo "papyrus CLI not found. Set PAPYRUS_BIN or download papyrus.phar (^1.5):" >&2
+    echo "  curl -fsSL -o papyrus.phar https://github.com/milon/papyrus/releases/download/v1.5.0/papyrus.phar" >&2
+    echo "  chmod +x papyrus.phar" >&2
+    exit 1
+  fi
+fi
+
+cd "$ROOT"
+run_papyrus doctor -d docs
+run_papyrus build:site -d docs
+
+SITE="$(ls -d "$ROOT"/docs/export/*-site 2>/dev/null | head -n 1 || true)"
+echo "Built: ${SITE:-unknown}"

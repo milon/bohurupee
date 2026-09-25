@@ -70,21 +70,27 @@ For a one-off shape, prefer YAML `response:` — no Go change required. See
 
 ## Docs site
 
-The site is [milon/papyrus](https://github.com/milon/papyrus). Chapters live
-in `docs/content/`; config is `docs/papyrus.yml`.
+The site is [milon/papyrus](https://github.com/milon/papyrus) **^1.5**. Chapters
+live in `docs/content/`; config is `docs/papyrus.yml`. CI downloads
+`papyrus.phar` **v1.5.0** (no Composer dependency).
 
 ```bash
-composer install
-composer docs:serve
+curl -fsSL -o papyrus.phar \
+  https://github.com/milon/papyrus/releases/download/v1.5.0/papyrus.phar
+chmod +x papyrus.phar
+
+docs/bin/build-site
+php papyrus.phar serve -d docs
 ```
 
-That runs `papyrus serve -d docs --build`. Open the printed URL (search needs
-a real HTTP origin). Pushes to `master` that touch `docs/`, `composer.json`,
-or `composer.lock` deploy via GitHub Pages (`.github/workflows/docs.yml`).
-Enable **Settings → Pages → GitHub Actions** once if needed.
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000/) (search needs a real HTTP
+origin). Pushes to `master` that touch `docs/` deploy via GitHub Pages
+(`.github/workflows/docs.yml`). Enable **Settings → Pages → GitHub Actions**
+once if needed.
 
 Mermaid diagrams (in [How the Laravel adapter works](socialite-internals.html))
-need `mmdc` on `PATH`. `papyrus doctor -d docs` reports if it is missing.
+need `mmdc` on `PATH`. `php papyrus.phar doctor -d docs` reports if it is
+missing.
 
 Keep prose concrete and short. Prefer tables for option lists. Link to
 working examples under `examples/` with full GitHub URLs. Use Papyrus

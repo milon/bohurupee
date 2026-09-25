@@ -5,14 +5,10 @@ on:
     branches: [master]
     paths:
       - "docs/**"
-      - "composer.json"
-      - "composer.lock"
       - ".github/workflows/docs.yml"
   pull_request:
     paths:
       - "docs/**"
-      - "composer.json"
-      - "composer.lock"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
@@ -36,7 +32,6 @@ jobs:
           php-version: "8.2"
           extensions: dom, gd, mbstring, zip, zlib
           coverage: none
-          tools: composer:v2
 
       - uses: actions/setup-node@v5
         with:
@@ -49,11 +44,18 @@ jobs:
       - name: Install mermaid-cli
         run: npm install --global @mermaid-js/mermaid-cli
 
-      - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Download Papyrus PHAR
+        env:
+          PAPYRUS_VERSION: "1.5.0"
+        run: |
+          curl -fsSL -o papyrus.phar \
+            "https://github.com/milon/papyrus/releases/download/v${PAPYRUS_VERSION}/papyrus.phar"
+          chmod +x papyrus.phar
+          php papyrus.phar --version
 
       - name: Build documentation site
         env:
+          PAPYRUS_BIN: php ${{ github.workspace }}/papyrus.phar
           PUPPETEER_EXECUTABLE_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: |
           set -euo pipefail
@@ -66,7 +68,7 @@ jobs:
             done
           fi
           echo "Using Chrome at: ${PUPPETEER_EXECUTABLE_PATH:-not set}"
-          vendor/bin/papyrus build:site -d docs
+          docs/bin/build-site
           test -f docs/export/bohurupee-site/index.html
           test -f docs/export/bohurupee-site/404.html
 

@@ -71,8 +71,11 @@ Content lives in `docs/content/` (`docs/papyrus.yml`). See the
 docs site for the same guide as `docs/content/contributing.md`.
 
 ```bash
-composer install
-composer docs:serve
+curl -fsSL -o papyrus.phar \
+  https://github.com/milon/papyrus/releases/download/v1.5.0/papyrus.phar
+chmod +x papyrus.phar
+docs/bin/build-site
+php papyrus.phar serve -d docs
 ```
 
 ## Add a response template
