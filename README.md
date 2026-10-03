@@ -16,7 +16,7 @@ not need it, or Go, to use the server.
 **DEV ONLY.** Listens on loopback unless you override that on purpose. See
 [SECURITY.md](SECURITY.md).
 
-**Docs:** [bohurupee.milon.im](https://bohurupee.milon.im/)
+**Docs:** [oss.milon.im/bohurupee](https://oss.milon.im/bohurupee/)
 
 ## Install
 
@@ -136,7 +136,7 @@ Authorization-code clients that cannot do discovery can hard-code the three
 endpoints above. OIDC clients should use the discovery document. A worked
 example for Auth.js and other stacks is in
 [`docs/content/any-framework.md`](docs/content/any-framework.md) (also on the
-[docs site](https://bohurupee.milon.im/any-framework.html)). A copy-paste Auth.js
+[docs site](https://oss.milon.im/bohurupee/any-framework.html)). A copy-paste Auth.js
 provider lives in [`examples/authjs`](examples/authjs).
 
 ### Sign in from a browser

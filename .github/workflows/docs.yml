@@ -1,5 +1,8 @@
 name: Docs
 
+# Builds docs to verify Papyrus config. Live site is deployed from milon/oss
+# to https://oss.milon.im/bohurupee/
+
 on:
   push:
     branches: [master]
@@ -14,11 +17,9 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: docs-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -70,19 +71,5 @@ jobs:
           echo "Using Chrome at: ${PUPPETEER_EXECUTABLE_PATH:-not set}"
           docs/bin/build-site
           test -f docs/export/bohurupee-site/index.html
-          test -f docs/export/bohurupee-site/404.html
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs/export/bohurupee-site
-
-  deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          grep -q 'base href="/bohurupee/"' docs/export/bohurupee-site/index.html
+          grep -q 'oss.milon.im' docs/export/bohurupee-site/CNAME
