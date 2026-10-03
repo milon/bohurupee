@@ -1,7 +1,7 @@
 name: Docs
 
-# Builds docs to verify Papyrus config. Live site is deployed from milon/oss
-# to https://oss.milon.im/bohurupee/
+# Deploys to https://milon.github.io/bohurupee/
+# Public URL: https://oss.milon.im/bohurupee/ (Cloudflare Worker in milon/oss)
 
 on:
   push:
@@ -17,9 +17,11 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: docs-${{ github.ref }}
+  group: pages
   cancel-in-progress: true
 
 jobs:
@@ -72,4 +74,20 @@ jobs:
           docs/bin/build-site
           test -f docs/export/bohurupee-site/index.html
           grep -q 'base href="/bohurupee/"' docs/export/bohurupee-site/index.html
-          grep -q 'oss.milon.im' docs/export/bohurupee-site/CNAME
+          # cname in papyrus.yml is for absolute sitemap URLs only; do not claim the domain.
+          rm -f docs/export/bohurupee-site/CNAME
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/export/bohurupee-site
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
